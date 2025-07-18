@@ -1,0 +1,221 @@
+
+视频去水印原型改进技术方案 (V2)
+1. 绪论
+本文档是 V1 方案的升级版，旨在解决“水印并非出现在视频第一帧”的实际问题。新方案引入了一个帧选择阶段，允许用户在处理前，先从视频中选择一个包含水印的代表性帧，然后再进行水印区域的框选。
+2. 核心流程变更
+原有的交互流程被扩展为两个独立的阶段：
+帧定位阶段 (Seeking Mode):
+目标: 找到一个清晰包含所有待去除水印的视频帧。
+交互: 用户通过拖动窗口上的滑动条来预览视频的不同帧。
+完成标志: 用户按下 s 键 (select)，确认当前帧为目标帧，并进入下一阶段。
+区域选择阶段 (Selection Mode):
+目标: 在已选定的帧上，用鼠标精确框选一个或多个水印区域。
+交互: 使用鼠标左键拖拽绘制矩形。
+完成标志: 用户按下 c 键 (confirm)，确认所有框选区域，并开始视频处理。
+3. 技术实现详解
+3.1. 帧定位功能的实现
+我们将利用 cv2.createTrackbar 来创建一个滑动条，并将其与视频的帧号关联起来。
+实现逻辑:
+打开视频，获取总帧数，这将作为滑动条的最大值。
+创建一个窗口，并使用 cv2.createTrackbar 在此窗口上创建一个名为 "Frame" 的滑动条。
+进入一个循环，循环中：
+使用 cv2.getTrackbarPos 获取滑动条的当前位置（即帧号）。
+使用 cap.set(cv2.CAP_PROP_POS_FRAMES, frame_pos) 来让视频捕获对象跳转到指定帧。
+读取并显示该帧。
+在画面上用 cv2.putText 显示操作提示。
+监听键盘事件，如果用户按下 s，则退出此循环。
+3.2. 完整的 Python 实现代码
+下面的代码整合了帧定位和区域选择两个阶段的逻辑。
+import cv2
+import numpy as np
+import moviepy.editor as mp
+
+# --- 全局变量，用于在回调函数和主逻辑之间传递状态 ---
+selected_rois = [] 
+is_drawing = False
+start_point = (-1, -1)
+# 我们需要一个变量来存储用户最终选定的那张用于操作的帧
+selected_frame_for_drawing = None
+
+def mouse_callback(event, x, y, flags, param):
+    """鼠标回调函数，仅在区域选择模式下工作"""
+    global start_point, is_drawing, selected_frame_for_drawing, selected_rois
+
+    # 如果我们还没有选定用于绘图的帧，则此函数不执行任何操作
+    if selected_frame_for_drawing is None:
+        return
+
+    if event == cv2.EVENT_LBUTTONDOWN:
+        start_point = (x, y)
+        is_drawing = True
+    elif event == cv2.EVENT_MOUSEMOVE:
+        if is_drawing:
+            temp_frame = selected_frame_for_drawing.copy()
+            cv2.rectangle(temp_frame, start_point, (x, y), (0, 255, 0), 2)
+            cv2.imshow("Watermark Remover", temp_frame)
+    elif event == cv2.EVENT_LBUTTONUP:
+        is_drawing = False
+        end_point = (x, y)
+        x1, y1 = min(start_point[0], end_point[0]), min(start_point[1], end_point[1])
+        x2, y2 = max(start_point[0], end_point[0]), max(start_point[1], end_point[1])
+        
+        selected_rois.append((x1, y1, x2 - x1, y2 - y1))
+        # 在主显示图像上画一个红色的、最终确认的矩形
+        cv2.rectangle(selected_frame_for_drawing, (x1, y1), (x2, y2), (0, 0, 255), 2)
+        cv2.imshow("Watermark Remover", selected_frame_for_drawing)
+
+def select_watermark_area_interactive(video_path):
+    """
+    一个包含帧选择和区域选择的完整交互函数
+    """
+    global selected_frame_for_drawing, selected_rois
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        print("错误: 无法打开视频文件。")
+        return None
+    
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    window_name = "Watermark Remover"
+    cv2.namedWindow(window_name)
+    
+    # 将鼠标回调函数先绑定好
+    cv2.setMouseCallback(window_name, mouse_callback)
+
+    # --- 阶段一: 帧定位 ---
+    print("--- 阶段一: 帧定位 ---")
+    print("拖动滑动条找到有水印的帧, 然后按 's' 键确认。")
+    
+    # 创建滑动条
+    cv2.createTrackbar("Frame", window_name, 0, total_frames - 1, lambda x: None)
+    
+    current_frame = None
+    last_pos = -1
+
+    while True:
+        pos = cv2.getTrackbarPos("Frame", window_name)
+        
+        # 仅当滑动条位置改变时才读取新帧，以提高效率
+        if pos != last_pos:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, pos)
+            ret, frame = cap.read()
+            if ret:
+                current_frame = frame
+            last_pos = pos
+
+        if current_frame is not None:
+            # 在帧上显示提示信息
+            display_frame = current_frame.copy()
+            cv2.putText(display_frame, "Seek: Drag slider. Confirm Frame: Press 's'", 
+                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+            cv2.imshow(window_name, display_frame)
+        
+        key = cv2.waitKey(20) & 0xFF
+        if key == ord('s'): # 's' for select frame
+            if current_frame is not None:
+                selected_frame_for_drawing = current_frame.copy()
+                print("帧已锁定！现在进入区域选择模式。")
+                break
+            else:
+                print("无法锁定帧，请先选择一个有效的帧。")
+        elif key == 27: # ESC 键退出
+             cap.release()
+             cv2.destroyAllWindows()
+             return None
+
+    # --- 阶段二: 区域选择 ---
+    # 销毁滑动条，避免干扰
+    cv2.destroyWindow(window_name) # 关闭旧窗口
+    cv2.namedWindow(window_name)   # 创建一个没有滑动条的新窗口
+    cv2.setMouseCallback(window_name, mouse_callback) # 重新绑定回调
+
+    print("\n--- 阶段二: 区域选择 ---")
+    print("用鼠标拖拽选择水印。完成后按 'c' 确认。按 'r' 重置。")
+    
+    # 复制一份用于重置
+    original_locked_frame = selected_frame_for_drawing.copy()
+
+    while True:
+        display_frame = selected_frame_for_drawing.copy()
+        cv2.putText(display_frame, "Select ROI. Confirm: 'c'. Reset: 'r'", 
+                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        cv2.imshow(window_name, display_frame)
+
+        key = cv2.waitKey(20) & 0xFF
+        if key == ord('c'): # 'c' for confirm
+            break
+        elif key == ord('r'): # 'r' for reset
+            selected_frame_for_drawing = original_locked_frame.copy()
+            selected_rois = []
+            print("选择已重置。")
+        elif key == 27: # ESC 键退出
+             cap.release()
+             cv2.destroyAllWindows()
+             return None
+
+    cap.release()
+    cv2.destroyAllWindows()
+    
+    if not selected_rois:
+        print("警告: 您没有选择任何区域。")
+        return None
+        
+    print(f"\n选择完成！共选择了 {len(selected_rois)} 个区域: {selected_rois}")
+    return selected_rois
+
+
+# --- 主执行逻辑 ---
+if __name__ == '__main__':
+    input_video = "/Users/yhzhu/work/trade/production/1688/scarves/scrv-ethnic/01416/01416.mp4"
+    output_video = "/Users/yhzhu/work/trade/production/1688/scarves/scrv-ethnic/01416/output_interactive.mp4"
+    temp_video = "/Users/yhzhu/work/trade/production/1688/scarves/scrv-ethnic/01416/temp_interactive.mp4"
+
+    # 1. 启动完整的交互流程
+    rois = select_watermark_area_interactive(input_video)
+
+    if rois:
+        # 2. 如果用户成功选择了区域，则开始视频处理
+        print("\n开始处理视频...")
+        cap = cv2.VideoCapture(input_video)
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        out = cv2.VideoWriter(temp_video, fourcc, fps, (width, height))
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        # 创建一个静态蒙版，这个蒙版将应用于所有帧
+        static_mask = np.zeros((height, width), dtype=np.uint8)
+        for (x, y, w, h) in rois:
+            cv2.rectangle(static_mask, (x, y), (x + w, y + h), 255, -1)
+
+        for i in range(frame_count):
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            # 使用蒙版进行修复 (此处仍用OpenCV的算法做演示)
+            inpainted_frame = cv2.inpaint(frame, static_mask, 3, cv2.INPAINT_NS)
+            out.write(inpainted_frame)
+
+            if i % 100 == 0:
+                print(f"已处理帧 {i}/{frame_count}")
+        
+        cap.release()
+        out.release()
+        print("视频内容处理完成。")
+
+        # 3. 合并音频
+        print("正在合并音频轨道...")
+        try:
+            video_clip = mp.VideoFileClip(temp_video)
+            original_audio = mp.VideoFileClip(input_video).audio
+            final_clip = video_clip.set_audio(original_audio)
+            final_clip.write_videofile(output_video, codec="libx264", audio_codec="aac")
+            print(f"✅ 完成！输出文件: {output_video}")
+        except Exception as e:
+            print(f"合并音频时出错: {e}")
+            print(f"无音频的视频文件已保存在: {temp_video}")
+    else:
+        print("\n操作已取消，未进行任何处理。")
+
