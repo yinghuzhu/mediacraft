@@ -38,7 +38,7 @@ if [[ "$OS" == *"Ubuntu"* ]] || [[ "$OS" == *"Debian"* ]]; then
     apt-get install -y python3 python3-pip python3-venv
     # Other utilities
     apt-get install -y curl wget
-elif [[ "$OS" == *"CentOS"* ]] || [[ "$OS" == *"Red Hat"* ]] || [[ "$OS" == *"Fedora"* ]]; then
+elif [[ "$OS" == *"CentOS"* ]] || [[ "$OS" == *"Red Hat"* ]] || [[ "$OS" == *"Fedora"* ]] || [[ "$OS" == *"Rocky"* ]] || [[ "$OS" == *"AlmaLinux"* ]]; then
     echo "Installing dependencies using yum/dnf..."
     # OpenCV dependencies
     if [[ "$OS" == *"CentOS"* ]] && [[ "$VER" == "7" ]]; then
@@ -55,8 +55,19 @@ elif [[ "$OS" == *"CentOS"* ]] || [[ "$OS" == *"Red Hat"* ]] || [[ "$OS" == *"Fe
         dnf install -y ffmpeg ffmpeg-devel
         dnf install -y python3 python3-pip
     else
-        # For Fedora and other RHEL derivatives
+        # For Fedora, Rocky Linux, AlmaLinux and other RHEL derivatives
+        echo "Using dnf package manager for $OS $VER"
         dnf install -y mesa-libGL.x86_64 glib2 libSM libXrender libXext
+        # Install EPEL and RPM Fusion for FFmpeg
+        dnf install -y epel-release
+        if [[ "$OS" == *"Rocky"* ]] || [[ "$OS" == *"AlmaLinux"* ]]; then
+            # For Rocky Linux and AlmaLinux 9.x
+            if [[ "$VER" == "9"* ]]; then
+                dnf install -y https://download1.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm
+            else
+                dnf install -y https://download1.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm
+            fi
+        fi
         dnf install -y ffmpeg ffmpeg-devel
         dnf install -y python3 python3-pip
     fi
