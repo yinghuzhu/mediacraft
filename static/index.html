@@ -105,6 +105,43 @@
             font-size: 1.5rem;
             font-weight: 500;
         }
+        
+        /* Loading button styles */
+        .btn.loading {
+            position: relative;
+            pointer-events: none;
+        }
+        
+        .btn.loading:hover {
+            cursor: not-allowed;
+        }
+        
+        /* Disable interactions during request */
+        body.request-in-progress .upload-area {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        
+        /* Loading overlay for sections */
+        .section-loading {
+            position: relative;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .section-loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
@@ -420,6 +457,10 @@
         let startX, startY;
         let canvas, ctx;
         let frameImage = null;
+        
+        // Request state management
+        let isRequestInProgress = false;
+        let requestTimeouts = new Map(); // For debouncing
 
         // DOM elements
         const uploadArea = document.getElementById('upload-area');
@@ -493,6 +534,13 @@
         }
 
         async function uploadVideo(file) {
+            // Prevent multiple uploads
+            if (isRequestInProgress) {
+                showAlert('Please wait for the current operation to complete', 'warning');
+                return;
+            }
+            
+            setRequestInProgress(true);
             const formData = new FormData();
             formData.append('file', file);
 
@@ -515,6 +563,8 @@
                 }
             } catch (error) {
                 showAlert('Error occurred during upload: ' + error.message, 'danger');
+            } finally {
+                setRequestInProgress(false);
             }
         }
 
@@ -528,6 +578,15 @@
 
         async function loadVideoFrames() {
             if (!currentTaskUuid) return;
+            
+            // Prevent multiple requests
+            if (isRequestInProgress) {
+                showAlert('Please wait for the current operation to complete', 'warning');
+                return;
+            }
+            
+            setRequestInProgress(true);
+            setButtonLoading('next-to-frame', 'Loading Frames...');
 
             try {
                 showAlert('Extracting video frames...', 'info');
@@ -545,6 +604,9 @@
                 }
             } catch (error) {
                 showAlert('Error occurred while extracting frames: ' + error.message, 'danger');
+            } finally {
+                setRequestInProgress(false);
+                resetButton('next-to-frame');
             }
         }
 
@@ -570,19 +632,31 @@
         }
 
         function selectFrame(frameNumber, element) {
-            // Remove previous selection
-            document.querySelectorAll('.frame-item').forEach(item => {
-                item.classList.remove('selected');
-            });
+            // Prevent rapid clicking
+            debounce(() => {
+                // Remove previous selection
+                document.querySelectorAll('.frame-item').forEach(item => {
+                    item.classList.remove('selected');
+                });
 
-            // Select current frame
-            element.querySelector('.frame-item').classList.add('selected');
-            selectedFrameNumber = frameNumber;
-            document.getElementById('next-to-region').disabled = false;
+                // Select current frame
+                element.querySelector('.frame-item').classList.add('selected');
+                selectedFrameNumber = frameNumber;
+                document.getElementById('next-to-region').disabled = false;
+            }, 300, `selectFrame-${frameNumber}`);
         }
 
         async function loadSelectedFrame() {
             if (!currentTaskUuid || !selectedFrameNumber) return;
+            
+            // Prevent multiple requests
+            if (isRequestInProgress) {
+                showAlert('Please wait for the current operation to complete', 'warning');
+                return;
+            }
+            
+            setRequestInProgress(true);
+            setButtonLoading('next-to-region', 'Loading Frame...');
 
             try {
                 showAlert('Loading selected frame...', 'info');
@@ -609,6 +683,9 @@
                 }
             } catch (error) {
                 showAlert('Error occurred while loading frame: ' + error.message, 'danger');
+            } finally {
+                setRequestInProgress(false);
+                resetButton('next-to-region');
             }
         }
 
@@ -766,6 +843,15 @@
 
         async function startVideoProcessing() {
             if (!currentTaskUuid || selectedRegions.length === 0) return;
+            
+            // Prevent multiple requests
+            if (isRequestInProgress) {
+                showAlert('Please wait for the current operation to complete', 'warning');
+                return;
+            }
+            
+            setRequestInProgress(true);
+            setButtonLoading('start-processing', 'Starting Processing...');
 
             try {
                 const response = await fetch(`/api/video/task/${currentTaskUuid}/select-regions`, {
@@ -784,11 +870,16 @@
                     showSection('process');
                     updateStepIndicator('process');
                     startProgressPolling();
+                    // Don't reset request state here as processing continues
                 } else {
                     showAlert(result.message || 'Failed to start processing', 'danger');
+                    setRequestInProgress(false);
+                    resetButton('start-processing');
                 }
             } catch (error) {
                 showAlert('Error occurred while starting processing: ' + error.message, 'danger');
+                setRequestInProgress(false);
+                resetButton('start-processing');
             }
         }
 
@@ -839,12 +930,18 @@
             document.getElementById('processing-status').style.display = 'none';
             document.getElementById('processing-complete').style.display = 'block';
             updateStepIndicator('completed');
+            // Reset request state when processing is complete
+            setRequestInProgress(false);
+            resetButton('start-processing');
         }
 
         function showProcessingError(errorMessage) {
             document.getElementById('processing-status').style.display = 'none';
             document.getElementById('error-message').textContent = errorMessage || 'An unknown error occurred during processing';
             document.getElementById('processing-error').style.display = 'block';
+            // Reset request state when processing fails
+            setRequestInProgress(false);
+            resetButton('start-processing');
         }
 
         async function downloadResult() {
@@ -928,6 +1025,61 @@
 
         function clearAlert() {
             alertContainer.innerHTML = '';
+        }
+        
+        // Button state management functions
+        function setButtonLoading(buttonId, loadingText = 'Processing...') {
+            const button = document.getElementById(buttonId);
+            if (button) {
+                button.disabled = true;
+                button.dataset.originalText = button.innerHTML;
+                button.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status"></span>${loadingText}`;
+                button.classList.add('loading');
+            }
+        }
+        
+        function resetButton(buttonId) {
+            const button = document.getElementById(buttonId);
+            if (button && button.dataset.originalText) {
+                button.disabled = false;
+                button.innerHTML = button.dataset.originalText;
+                button.classList.remove('loading');
+                delete button.dataset.originalText;
+            }
+        }
+        
+        function setMultipleButtonsLoading(buttonIds, loadingText = 'Processing...') {
+            buttonIds.forEach(id => setButtonLoading(id, loadingText));
+        }
+        
+        function resetMultipleButtons(buttonIds) {
+            buttonIds.forEach(id => resetButton(id));
+        }
+        
+        // Request state management
+        function setRequestInProgress(inProgress) {
+            isRequestInProgress = inProgress;
+            if (inProgress) {
+                document.body.style.cursor = 'wait';
+                document.body.classList.add('request-in-progress');
+            } else {
+                document.body.style.cursor = 'default';
+                document.body.classList.remove('request-in-progress');
+            }
+        }
+        
+        // Debounce function
+        function debounce(func, delay, key) {
+            if (requestTimeouts.has(key)) {
+                clearTimeout(requestTimeouts.get(key));
+            }
+            
+            const timeoutId = setTimeout(() => {
+                requestTimeouts.delete(key);
+                func();
+            }, delay);
+            
+            requestTimeouts.set(key, timeoutId);
         }
 
         function formatFileSize(bytes) {
