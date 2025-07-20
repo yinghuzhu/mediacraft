@@ -58,18 +58,42 @@ elif [[ "$OS" == *"CentOS"* ]] || [[ "$OS" == *"Red Hat"* ]] || [[ "$OS" == *"Fe
         # For Fedora, Rocky Linux, AlmaLinux and other RHEL derivatives
         echo "Using dnf package manager for $OS $VER"
         dnf install -y mesa-libGL.x86_64 glib2 libSM libXrender libXext
+        dnf install -y python3 python3-pip
+        
         # Install EPEL and RPM Fusion for FFmpeg
         dnf install -y epel-release
         if [[ "$OS" == *"Rocky"* ]] || [[ "$OS" == *"AlmaLinux"* ]]; then
             # For Rocky Linux and AlmaLinux 9.x
             if [[ "$VER" == "9"* ]]; then
+                echo "Installing RPM Fusion for Rocky/AlmaLinux 9..."
                 dnf install -y https://download1.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm
+                dnf install -y https://download1.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-9.noarch.rpm
+                
+                # Install additional dependencies for FFmpeg on Rocky Linux 9
+                dnf install -y --nobest --skip-broken ladspa rubberband
+                
+                # Try to install FFmpeg with more flexible options
+                echo "Installing FFmpeg with flexible dependency resolution..."
+                if ! dnf install -y --nobest --skip-broken ffmpeg ffmpeg-devel; then
+                    echo "Standard FFmpeg installation failed, trying alternative approach..."
+                    # Try installing just the basic FFmpeg without development packages
+                    if ! dnf install -y --nobest --skip-broken ffmpeg; then
+                        echo "Warning: FFmpeg installation failed. Audio processing may not work."
+                        echo "You may need to install FFmpeg manually or use a different approach."
+                    else
+                        echo "Basic FFmpeg installed successfully (without development packages)"
+                    fi
+                else
+                    echo "FFmpeg installed successfully with all packages"
+                fi
             else
                 dnf install -y https://download1.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm
+                dnf install -y ffmpeg ffmpeg-devel
             fi
+        else
+            # For Fedora
+            dnf install -y ffmpeg ffmpeg-devel
         fi
-        dnf install -y ffmpeg ffmpeg-devel
-        dnf install -y python3 python3-pip
     fi
 else
     echo "Unsupported distribution: $OS"
