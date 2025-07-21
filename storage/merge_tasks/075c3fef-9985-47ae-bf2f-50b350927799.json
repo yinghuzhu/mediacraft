@@ -1,0 +1,19 @@
+{
+  "task_uuid": "075c3fef-9985-47ae-bf2f-50b350927799",
+  "task_name": "test",
+  "total_videos": 3,
+  "total_duration": 0.0,
+  "output_resolution": "",
+  "output_format": "mp4",
+  "output_file_path": null,
+  "status": "uploading",
+  "progress_percentage": 0,
+  "error_message": null,
+  "merge_mode": "concat",
+  "audio_handling": "keep_all",
+  "quality_preset": "medium",
+  "created_at": "2025-07-21T18:50:32.225130",
+  "started_at": null,
+  "completed_at": null,
+  "expires_at": "2025-07-22T18:50:32.225139"
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-视频去水印功能测试脚本
-用于验证 Demo 版本的基本功能
+Video Watermark Removal Test Script
+For validating the demo version's basic functionality
 """
 
 import os
@@ -11,34 +11,34 @@ import requests
 import json
 from pathlib import Path
 
-# 添加 app 目录到 Python 路径
+# Add app directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
 
 def test_video_watermark_models():
-    """测试数据模型"""
-    print("🧪 测试数据模型...")
+    """Test data models"""
+    print("🧪 Testing data models...")
     
     try:
         from video_watermark.models import VideoWatermarkTask, WatermarkRegion, TaskProcessingLog, storage
         
-        # 测试创建任务
+        # Test task creation
         task = VideoWatermarkTask("test_video.mp4", 1024*1024, "mp4")
-        print(f"✅ 创建任务成功: {task.task_uuid}")
+        print(f"✅ Task created successfully: {task.task_uuid}")
         
-        # 测试保存任务（使用简化存储）
+        # Test task saving (using simplified storage)
         if task.save():
-            print("✅ 任务保存成功")
+            print("✅ Task saved successfully")
         else:
-            print("❌ 任务保存失败")
+            print("❌ Task saving failed")
         
-        # 测试获取任务
+        # Test task retrieval
         retrieved_task = VideoWatermarkTask.get_by_uuid(task.task_uuid)
         if retrieved_task:
-            print("✅ 任务检索成功")
+            print("✅ Task retrieval successful")
         else:
-            print("❌ 任务检索失败")
+            print("❌ Task retrieval failed")
         
-        # 测试水印区域
+        # Test watermark regions
         regions = [
             {
                 'region_order': 1,
@@ -49,93 +49,93 @@ def test_video_watermark_models():
             }
         ]
         if storage.save_regions(task.task_uuid, regions):
-            print("✅ 水印区域保存成功")
+            print("✅ Watermark regions saved successfully")
         else:
-            print("❌ 水印区域保存失败")
+            print("❌ Failed to save watermark regions")
         
-        # 测试获取区域
+        # Test region retrieval
         retrieved_regions = storage.get_regions(task.task_uuid)
         if retrieved_regions:
-            print("✅ 水印区域检索成功")
+            print("✅ Watermark regions retrieved successfully")
         else:
-            print("❌ 水印区域检索失败")
+            print("❌ Failed to retrieve watermark regions")
         
-        # 测试日志
-        TaskProcessingLog.add_log(task.task_uuid, 'info', '测试日志消息', 'test')
-        print("✅ 日志记录成功")
+        # Test logging
+        TaskProcessingLog.add_log(task.task_uuid, 'info', 'Test log message', 'test')
+        print("✅ Log recorded successfully")
         
         return True
         
     except Exception as e:
-        print(f"❌ 模型测试失败: {e}")
+        print(f"❌ Model test failed: {e}")
         return False
 
 def test_video_processor():
-    """测试视频处理器"""
-    print("\n🎬 测试视频处理器...")
+    """Test video processor"""
+    print("\n🎬 Testing video processor...")
     
     try:
         from video_watermark.video_processor import VideoProcessor
         
         processor = VideoProcessor()
-        print("✅ 视频处理器初始化成功")
+        print("✅ Video processor initialized successfully")
         
-        # 注意：这里需要一个真实的视频文件来测试
-        # 在实际部署时，可以创建一个小的测试视频文件
-        print("ℹ️  视频处理器功能需要真实视频文件进行完整测试")
+        # Note: A real video file is needed for testing
+        # In actual deployment, a small test video file can be created
+        print("ℹ️  Video processor functionality requires real video files for complete testing")
         
         return True
         
     except Exception as e:
-        print(f"❌ 视频处理器测试失败: {e}")
+        print(f"❌ Video processor test failed: {e}")
         return False
 
 def test_api_endpoints():
-    """测试 API 端点（需要服务器运行）"""
-    print("\n🌐 测试 API 端点...")
+    """Test API endpoints (server needs to be running)"""
+    print("\n🌐 Testing API endpoints...")
     
-    # 这里只是检查路由是否正确导入
+    # Just checking if routes are correctly imported
     try:
         from video_watermark.routes import video_watermark_bp
-        print("✅ API 路由导入成功")
+        print("✅ API routes imported successfully")
         
-        # 检查蓝图中的路由（简化版本）
-        print("📋 可用的 API 端点:")
-        print("   POST /api/video/upload - 上传视频")
-        print("   GET /api/video/task/{uuid}/frames - 获取视频帧")
-        print("   POST /api/video/task/{uuid}/select-frame - 选择帧")
-        print("   POST /api/video/task/{uuid}/select-regions - 提交水印区域")
-        print("   GET /api/video/task/{uuid}/status - 查询任务状态")
-        print("   GET /api/video/task/{uuid}/download - 下载结果")
+        # Check routes in blueprint (simplified version)
+        print("📋 Available API endpoints:")
+        print("   POST /api/video/upload - Upload video")
+        print("   GET /api/video/task/{uuid}/frames - Get video frames")
+        print("   POST /api/video/task/{uuid}/select-frame - Select frame")
+        print("   POST /api/video/task/{uuid}/select-regions - Submit watermark regions")
+        print("   GET /api/video/task/{uuid}/status - Check task status")
+        print("   GET /api/video/task/{uuid}/download - Download result")
         
         return True
         
     except Exception as e:
-        print(f"❌ API 端点测试失败: {e}")
+        print(f"❌ API endpoint test failed: {e}")
         return False
 
 def check_storage_directory():
-    """检查存储目录"""
-    print("\n📁 检查存储目录...")
+    """Check storage directory"""
+    print("\n📁 Checking storage directory...")
     
     try:
         temp_storage_dir = Path("temp_storage")
         if not temp_storage_dir.exists():
             temp_storage_dir.mkdir(exist_ok=True)
-            print("✅ 创建临时存储目录")
+            print("✅ Temporary storage directory created")
         else:
-            print("✅ 临时存储目录已存在")
+            print("✅ Temporary storage directory already exists")
         
-        print(f"   存储位置: {temp_storage_dir.absolute()}")
+        print(f"   Storage location: {temp_storage_dir.absolute()}")
         return True
         
     except Exception as e:
-        print(f"❌ 存储目录检查失败: {e}")
+        print(f"❌ Storage directory check failed: {e}")
         return False
 
 def check_dependencies():
-    """检查依赖项"""
-    print("\n📦 检查依赖项...")
+    """Check dependencies"""
+    print("\n📦 Checking dependencies...")
     
     required_packages = [
         'cv2',
@@ -154,22 +154,22 @@ def check_dependencies():
             elif package == 'flask':
                 import flask
             
-            print(f"✅ {package} 已安装")
+            print(f"✅ {package} installed")
             
         except ImportError:
             missing_packages.append(package)
-            print(f"❌ {package} 未安装")
+            print(f"❌ {package} not installed")
     
     if missing_packages:
-        print(f"\n⚠️  缺少依赖项: {', '.join(missing_packages)}")
-        print("请运行: pip install -r requirements.txt")
+        print(f"\n⚠️  Missing dependencies: {', '.join(missing_packages)}")
+        print("Please run: pip install -r requirements.txt")
         return False
     
     return True
 
 def main():
-    """主测试函数"""
-    print("🚀 视频去水印功能测试开始...\n")
+    """Main test function"""
+    print("🚀 Video Watermark Removal Test Starting...\n")
     
     tests = [
         ("依赖项检查", check_dependencies),
