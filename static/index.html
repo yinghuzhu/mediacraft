@@ -117,7 +117,8 @@
         }
         
         /* Disable interactions during request */
-        body.request-in-progress .upload-area {
+        body.request-in-progress .upload-area,
+        .upload-area.disabled {
             pointer-events: none;
             opacity: 0.6;
         }
@@ -212,9 +213,14 @@
             </div>
             <div class="card-body">
                 <div class="upload-area" id="upload-area">
-                    <i class="bi bi-cloud-upload fs-1 text-muted"></i>
-                    <h5 class="mt-3">Drag and drop video file here, or click to select</h5>
-                    <p class="text-muted">Supports MP4, MOV, AVI, MKV formats, max 500MB</p>
+                    <div id="uploadPrompt">
+                        <i class="bi bi-cloud-upload fs-1 text-muted"></i>
+                        <h5 class="mt-3">Drag and drop video file here, or click to select</h5>
+                        <p class="text-muted">Supports MP4, MOV, AVI, MKV formats, max 500MB</p>
+                    </div>
+                    <div id="uploadProgress" class="progress mt-3" style="display: none;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%">0%</div>
+                    </div>
                     <input type="file" id="video-input" accept="video/*" style="display: none;">
                 </div>
                 <div class="mt-3" id="upload-info" style="display: none;">
@@ -466,6 +472,8 @@
         const uploadArea = document.getElementById('upload-area');
         const videoInput = document.getElementById('video-input');
         const uploadInfo = document.getElementById('upload-info');
+        const uploadPrompt = document.getElementById('uploadPrompt');
+        const uploadProgress = document.getElementById('uploadProgress');
         const alertContainer = document.getElementById('alert-container');
 
         // Initialize
@@ -540,19 +548,58 @@
                 return;
             }
             
+            // Set request in progress and disable upload area
             setRequestInProgress(true);
+            
+            // Visually disable the upload area
+            uploadArea.classList.add('disabled');
+            
+            // Show upload progress
+            uploadPrompt.classList.add('hidden');
+            uploadProgress.classList.remove('hidden');
+            const progressBar = uploadProgress.querySelector('.progress-bar');
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0%';
+            
             const formData = new FormData();
             formData.append('file', file);
 
             try {
                 showAlert('Uploading video...', 'info');
                 
-                const response = await fetch('/api/video/upload', {
-                    method: 'POST',
-                    body: formData
+                // Use XMLHttpRequest for upload progress tracking
+                const xhr = new XMLHttpRequest();
+                
+                // Create a promise to handle the XHR response
+                const uploadPromise = new Promise((resolve, reject) => {
+                    xhr.open('POST', '/api/video/upload', true);
+                    
+                    // Track upload progress
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            const percentComplete = Math.round((e.loaded / e.total) * 100);
+                            progressBar.style.width = percentComplete + '%';
+                            progressBar.textContent = percentComplete + '%';
+                        }
+                    };
+                    
+                    xhr.onload = function() {
+                        if (xhr.status === 200) {
+                            resolve(JSON.parse(xhr.responseText));
+                        } else {
+                            reject(new Error('Upload failed with status: ' + xhr.status));
+                        }
+                    };
+                    
+                    xhr.onerror = function() {
+                        reject(new Error('Network error during upload'));
+                    };
+                    
+                    xhr.send(formData);
                 });
-
-                const result = await response.json();
+                
+                // Wait for upload to complete
+                const result = await uploadPromise;
 
                 if (result.code === 10000) {
                     currentTaskUuid = result.data.task_uuid;
@@ -564,7 +611,11 @@
             } catch (error) {
                 showAlert('Error occurred during upload: ' + error.message, 'danger');
             } finally {
+                // Reset upload area and request state
                 setRequestInProgress(false);
+                uploadArea.classList.remove('disabled');
+                uploadProgress.classList.add('hidden');
+                uploadPrompt.classList.remove('hidden');
             }
         }
 
