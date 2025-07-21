@@ -473,6 +473,14 @@
             // --- UI Functions ---
             const ui = {
                 showAlert: (message, type = 'danger') => {
+                    // Clear previous alerts of the same type to prevent accumulation
+                    const existingAlerts = alertContainer.querySelectorAll(`.alert-${type}`);
+                    existingAlerts.forEach(alert => {
+                        if (alert.textContent.trim() === message) {
+                            alert.remove();
+                        }
+                    });
+                    
                     const wrapper = document.createElement('div');
                     wrapper.innerHTML = [
                         `<div class="alert alert-${type} alert-dismissible" role="alert">`,
@@ -481,6 +489,27 @@
                         '</div>'
                     ].join('');
                     alertContainer.append(wrapper);
+                    
+                    // Auto-dismiss success messages after 3 seconds
+                    if (type === 'success') {
+                        setTimeout(() => {
+                            const alertElement = wrapper.querySelector('.alert');
+                            if (alertElement && alertElement.parentNode) {
+                                alertElement.remove();
+                            }
+                        }, 3000);
+                    }
+                },
+                clearAlerts: () => {
+                    // Ensure all alerts are removed
+                    alertContainer.innerHTML = '';
+                    
+                    // Also remove any alerts that might be outside the container
+                    document.querySelectorAll('.alert').forEach(alert => {
+                        if (alert.parentElement !== alertContainer) {
+                            alert.remove();
+                        }
+                    });
                 },
                 setLoading: (element, isLoading) => {
                     if (isLoading) {
@@ -703,23 +732,62 @@
                         }
                     }
                 } else if (target.closest('.update-time-btn')) {
-                    const startTime = parseFloat(videoItem.querySelector('.start-time').value);
-                    const endTime = parseFloat(videoItem.querySelector('.end-time').value);
+                    const startTimeInput = videoItem.querySelector('.start-time');
+                    const endTimeInput = videoItem.querySelector('.end-time');
+                    const startTime = parseFloat(startTimeInput.value);
+                    const endTime = parseFloat(endTimeInput.value);
                     
-                    if (startTime >= endTime) {
-                        ui.showAlert('Start time must be less than end time');
+                    // Get the current item to check against video duration
+                    const currentItem = state.items.find(i => i.item_id === item_id);
+                    if (!currentItem) {
+                        ui.showAlert('Item not found', 'danger');
                         return;
                     }
                     
-                    const result = await api.updateItem(state.task_uuid, item_id, { start_time: startTime, end_time: endTime });
-                    if(result.code === 10000) {
-                        const updatedItem = result.data;
-                        const index = state.items.findIndex(i => i.item_id === item_id);
-                        if (index !== -1) state.items[index] = updatedItem;
-                        ui.renderVideoList();
-                        ui.showAlert('Time segment updated successfully!', 'success');
-                    } else {
-                        ui.showAlert(result.message);
+                    // Validate time values
+                    if (isNaN(startTime) || isNaN(endTime)) {
+                        ui.showAlert('Invalid time values: must be numbers', 'danger');
+                        return;
+                    }
+                    
+                    if (startTime < 0) {
+                        ui.showAlert('Start time cannot be negative', 'danger');
+                        startTimeInput.value = 0;
+                        return;
+                    }
+                    
+                    if (startTime >= endTime) {
+                        ui.showAlert('Start time must be less than end time', 'danger');
+                        return;
+                    }
+                    
+                    if (endTime > currentItem.video_duration) {
+                        ui.showAlert(`End time cannot exceed video duration (${currentItem.video_duration.toFixed(1)}s)`, 'danger');
+                        endTimeInput.value = currentItem.video_duration.toFixed(1);
+                        return;
+                    }
+                    
+                    try {
+                        const result = await api.updateItem(state.task_uuid, item_id, { start_time: startTime, end_time: endTime });
+                        if(result.code === 10000) {
+                            const updatedItem = result.data;
+                            const index = state.items.findIndex(i => i.item_id === item_id);
+                            if (index !== -1) state.items[index] = updatedItem;
+                            
+                            // Update UI without showing multiple alerts
+                            const segmentDuration = (updatedItem.end_time - updatedItem.start_time).toFixed(1);
+                            const durationBadge = videoItem.querySelector('.badge.bg-info');
+                            if (durationBadge) {
+                                durationBadge.textContent = `Segment: ${segmentDuration}s`;
+                            }
+                            
+                            ui.updateTotalDuration();
+                            ui.showAlert(`Time segment updated successfully`, 'success');
+                        } else {
+                            ui.showAlert(result.message, 'danger');
+                        }
+                    } catch (error) {
+                        ui.showAlert(`Failed to update time segment: ${error.message}`, 'danger');
                     }
                 } else if (target.closest('.reset-time-btn')) {
                     const item = state.items.find(i => i.item_id === item_id);
@@ -733,7 +801,7 @@
                             const index = state.items.findIndex(i => i.item_id === item_id);
                             if (index !== -1) state.items[index] = updatedItem;
                             ui.renderVideoList();
-                            ui.showAlert('Time segment reset to full duration!', 'success');
+                            ui.showAlert(`Time segment reset for ${updatedItem.original_filename}!`, 'success');
                         } else {
                             ui.showAlert(result.message);
                         }
@@ -746,15 +814,47 @@
             });
 
             startMergeBtn.addEventListener('click', async () => {
-                appSection.classList.add('d-none');
-                processingSection.classList.remove('d-none');
-                const result = await api.startMerge(state.task_uuid);
-                if (result.code === 10000) {
-                    startStatusPolling();
-                } else {
-                    ui.showAlert(result.message);
-                    processingSection.classList.add('d-none');
-                    appSection.classList.remove('d-none');
+                // Prevent multiple clicks
+                if (startMergeBtn.disabled) return;
+                
+                // Clear ALL previous alerts
+                ui.clearAlerts();
+                
+                // Validate all time segments before starting
+                let hasInvalidSegments = false;
+                for (const item of state.items) {
+                    if (item.start_time < 0 || item.end_time <= item.start_time || 
+                        item.end_time > item.video_duration) {
+                        hasInvalidSegments = true;
+                        ui.showAlert(`Invalid time segment for "${item.original_filename}": Start=${item.start_time}s, End=${item.end_time}s`, 'warning');
+                    }
+                }
+                
+                if (hasInvalidSegments) {
+                    ui.showAlert('Please fix invalid time segments before starting the merge process', 'danger');
+                    return;
+                }
+                
+                startMergeBtn.disabled = true;
+                startMergeBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Starting...';
+                
+                try {
+                    const result = await api.startMerge(state.task_uuid);
+                    if (result.code === 10000) {
+                        // Hide all sections except processing
+                        document.getElementById('upload-section').classList.add('d-none');
+                        document.getElementById('video-list-section').classList.add('d-none');
+                        processingSection.classList.remove('d-none');
+                        startStatusPolling();
+                    } else {
+                        ui.showAlert(result.message);
+                        startMergeBtn.disabled = false;
+                        startMergeBtn.innerHTML = '<i class="bi bi-film me-2"></i>Start Merging';
+                    }
+                } catch (error) {
+                    ui.showAlert('Failed to start merge process: ' + error.message);
+                    startMergeBtn.disabled = false;
+                    startMergeBtn.innerHTML = '<i class="bi bi-film me-2"></i>Start Merging';
                 }
             });
 
@@ -833,8 +933,8 @@
                         ui.renderVideoItem(itemData);
                         startMergeBtn.disabled = state.items.length === 0;
                         
-                        // Show success message
-                        ui.showAlert(`Successfully uploaded: ${file.name}`, 'success');
+                        // Show success message with more details
+                        ui.showAlert(`✓ ${file.name} uploaded (${(file.size / (1024*1024)).toFixed(1)}MB)`, 'success');
                         
                         // Re-initialize drag and drop for new items
                         initializeDragAndDrop();

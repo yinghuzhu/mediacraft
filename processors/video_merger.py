@@ -449,57 +449,167 @@ class VideoMerger:
     
     def _merge_video_segments(self, segment_files: List[str], output_path: str, 
                             output_format: Dict[str, Any], audio_handling: str) -> bool:
-        """Merge video segments into a single video"""
+        """Merge video segments into a single video using a more reliable method"""
         try:
             if not segment_files:
                 return False
             
-            # Create a temporary file list for FFmpeg concat
-            concat_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False)
+            print(f"Merging {len(segment_files)} video segments using advanced method")
+            
+            # Create output directory if it doesn't exist
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            
+            # Method 1: Try using FFmpeg with concat demuxer and re-encoding
+            # This is more reliable than simple concat for videos with different properties
             try:
-                # Write file paths to concat file
-                for file_path in segment_files:
-                    concat_file.write(f"file '{file_path}'\n")
-                
-                concat_file.close()
-                
-                # Build FFmpeg command for merging
-                cmd = [
-                    'ffmpeg', '-y',
-                    '-f', 'concat',
-                    '-safe', '0',
-                    '-i', concat_file.name,
-                    '-c:v', output_format['codec'],
-                    '-b:v', str(output_format['bitrate'])
-                ]
-                
-                # Audio handling
-                if audio_handling == 'remove':
-                    cmd.extend(['-an'])  # No audio
-                else:
-                    cmd.extend([
-                        '-c:a', output_format['audio_codec'],
-                        '-b:a', '192k'
-                    ])
-                
-                # Output file
-                cmd.append(output_path)
-                
-                # Run FFmpeg command
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
-                
-                if result.returncode != 0:
-                    print(f"FFmpeg merge error: {result.stderr}")
-                    return False
-                
-                return True
-                
-            finally:
-                # Clean up concat file
+                # Create a temporary file list for FFmpeg concat
+                concat_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False)
                 try:
-                    os.unlink(concat_file.name)
-                except:
-                    pass
+                    # Write file paths to concat file
+                    for file_path in segment_files:
+                        concat_file.write(f"file '{file_path}'\n")
+                    
+                    concat_file.close()
+                    
+                    # Build FFmpeg command for merging with re-encoding
+                    cmd = [
+                        'ffmpeg', '-y',
+                        '-f', 'concat',
+                        '-safe', '0',
+                        '-i', concat_file.name,
+                        # Force re-encoding to ensure consistent output
+                        '-c:v', output_format['codec'],
+                        '-b:v', str(output_format['bitrate']),
+                        # Add filter to ensure consistent frame rate
+                        '-filter_complex', f"fps={output_format['fps']}",
+                        # Ensure consistent pixel format
+                        '-pix_fmt', 'yuv420p'
+                    ]
+                    
+                    # Audio handling
+                    if audio_handling == 'remove':
+                        cmd.extend(['-an'])  # No audio
+                    else:
+                        cmd.extend([
+                            '-c:a', output_format['audio_codec'],
+                            '-b:a', '192k'
+                        ])
+                    
+                    # Output file
+                    cmd.append(output_path)
+                    
+                    print(f"Running FFmpeg command: {' '.join(cmd)}")
+                    
+                    # Run FFmpeg command
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+                    
+                    if result.returncode != 0:
+                        print(f"FFmpeg merge error: {result.stderr}")
+                        raise Exception(f"FFmpeg error: {result.stderr}")
+                    
+                    # Verify the output file exists and has content
+                    if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+                        raise Exception("Output file is empty or does not exist")
+                    
+                    return True
+                    
+                finally:
+                    # Clean up concat file
+                    try:
+                        os.unlink(concat_file.name)
+                    except:
+                        pass
+                    
+            except Exception as e:
+                print(f"Method 1 failed: {e}")
+                
+                # Method 2: Try using FFmpeg with filter_complex for more control
+                try:
+                    # Build complex filter command
+                    inputs = []
+                    filter_complex = []
+                    
+                    for i, file_path in enumerate(segment_files):
+                        inputs.extend(['-i', file_path])
+                        filter_complex.append(f"[{i}:v]scale={output_format['resolution'].replace('x', ':')},fps={output_format['fps']},format=yuv420p[v{i}];")
+                    
+                    # Concatenate video streams
+                    for i in range(len(segment_files)):
+                        filter_complex.append(f"[v{i}]")
+                    
+                    filter_complex.append(f"concat=n={len(segment_files)}:v=1:a=0[outv]")
+                    
+                    # Build FFmpeg command
+                    cmd = ['ffmpeg', '-y']
+                    cmd.extend(inputs)
+                    cmd.extend(['-filter_complex', ''.join(filter_complex)])
+                    cmd.extend(['-map', '[outv]'])
+                    
+                    # Video codec settings
+                    cmd.extend([
+                        '-c:v', output_format['codec'],
+                        '-b:v', str(output_format['bitrate']),
+                        '-pix_fmt', 'yuv420p'
+                    ])
+                    
+                    # Audio handling
+                    if audio_handling == 'remove':
+                        cmd.extend(['-an'])  # No audio
+                    elif audio_handling == 'keep_first' and len(segment_files) > 0:
+                        cmd.extend([
+                            '-i', segment_files[0],
+                            '-map', '0:a:0',
+                            '-c:a', output_format['audio_codec'],
+                            '-b:a', '192k'
+                        ])
+                    else:
+                        # Try to merge audio streams if available
+                        audio_filter = []
+                        has_audio = False
+                        
+                        for i, file_path in enumerate(segment_files):
+                            # Check if file has audio
+                            audio_check_cmd = [
+                                'ffprobe', '-v', 'error', '-select_streams', 'a', 
+                                '-show_entries', 'stream=codec_type', '-of', 'json', file_path
+                            ]
+                            result = subprocess.run(audio_check_cmd, capture_output=True, text=True)
+                            
+                            if '"codec_type": "audio"' in result.stdout:
+                                has_audio = True
+                                audio_filter.append(f"[{i}:a]aformat=sample_rates=44100:channel_layouts=stereo[a{i}];")
+                        
+                        if has_audio:
+                            for i in range(len(segment_files)):
+                                audio_filter.append(f"[a{i}]")
+                            
+                            audio_filter.append(f"concat=n={len(segment_files)}:v=0:a=1[outa]")
+                            
+                            # Add audio filter to filter complex
+                            cmd[cmd.index('-filter_complex') + 1] += ''.join(audio_filter)
+                            cmd.extend(['-map', '[outa]'])
+                            cmd.extend([
+                                '-c:a', output_format['audio_codec'],
+                                '-b:a', '192k'
+                            ])
+                    
+                    # Output file
+                    cmd.append(output_path)
+                    
+                    print(f"Running FFmpeg command (Method 2): {' '.join(cmd)}")
+                    
+                    # Run FFmpeg command
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+                    
+                    if result.returncode != 0:
+                        print(f"FFmpeg merge error (Method 2): {result.stderr}")
+                        raise Exception(f"FFmpeg error (Method 2): {result.stderr}")
+                    
+                    return True
+                    
+                except Exception as e:
+                    print(f"Method 2 failed: {e}")
+                    return False
                 
         except Exception as e:
             print(f"Error merging video segments: {e}")

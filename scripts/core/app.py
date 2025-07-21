@@ -5,9 +5,15 @@ Features: Video Watermark Removal and Video Merger
 """
 
 import os
+import sys
 import uuid
 import tempfile
 import threading
+
+# Add project root to Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, project_root)
+
 from flask import Flask, request, jsonify, send_file, render_template
 from werkzeug.utils import secure_filename
 from models.task import VideoWatermarkTask
@@ -18,10 +24,12 @@ from processors.video_processor import VideoProcessor
 from processors.video_merger import VideoMerger
 import config
 
-# Initialize Flask app
+# Initialize Flask app with correct paths
+static_folder = os.path.join(project_root, 'static')
+template_folder = os.path.join(project_root, 'templates')
 app = Flask(__name__, 
-            static_folder='static',
-            template_folder='templates')
+            static_folder=static_folder,
+            template_folder=template_folder)
 
 # Initialize storage
 storage = TaskStorage()
