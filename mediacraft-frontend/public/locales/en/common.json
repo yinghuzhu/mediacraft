@@ -1,0 +1,42 @@
+{
+  "site": {
+    "title": "MediaCraft",
+    "description": "Professional video editing tools for watermark removal and video merging"
+  },
+  "nav": {
+    "home": "Home",
+    "watermarkRemover": "Watermark Remover",
+    "videoMerger": "Video Merger"
+  },
+  "home": {
+    "title": "Professional Video Editing Tools",
+    "description": "MediaCraft offers intelligent video editing with watermark removal and video merging capabilities.",
+    "heading": "Transform Your Videos with MediaCraft"
+  },
+  "features": {
+    "watermark": {
+      "title": "Video Watermark Remover",
+      "description": "Remove unwanted watermarks from your videos with our intelligent watermark removal tool.",
+      "cta": "Remove Watermarks"
+    },
+    "merger": {
+      "title": "Video Merger",
+      "description": "Combine multiple videos into one seamless file with precise time segment control.",
+      "cta": "Merge Videos"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success!",
+    "upload": "Upload",
+    "download": "Download",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "start": "Start",
+    "back": "Back",
+    "next": "Next"
+  }
+}

@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-color: #0d6efd;
+  --secondary-color: #6c757d;
+  --success-color: #198754;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --info-color: #0dcaf0;
+}
+
+body {
+  @apply bg-gray-50;
+}
+
+.container {
+  @apply px-4 mx-auto max-w-7xl;
+}
+
+.btn {
+  @apply px-4 py-2 font-medium rounded-md transition-colors;
+}
+
+.btn-primary {
+  @apply bg-primary text-white hover:bg-blue-600;
+}
+
+.btn-secondary {
+  @apply bg-secondary text-white hover:bg-gray-600;
+}
+
+.btn-success {
+  @apply bg-success text-white hover:bg-green-600;
+}
+
+.btn-danger {
+  @apply bg-danger text-white hover:bg-red-600;
+}
+
+.card {
+  @apply bg-white rounded-lg shadow-md overflow-hidden;
+}
+
+.card-header {
+  @apply px-6 py-4 bg-gray-50 border-b border-gray-200;
+}
+
+.card-body {
+  @apply p-6;
+}
+
+.form-control {
+  @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary;
+}
+
+.alert {
+  @apply p-4 mb-4 rounded-md;
+}
+
+.alert-success {
+  @apply bg-green-100 text-green-800;
+}
+
+.alert-danger {
+  @apply bg-red-100 text-red-800;
+}
+
+.alert-warning {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.alert-info {
+  @apply bg-blue-100 text-blue-800;
+}

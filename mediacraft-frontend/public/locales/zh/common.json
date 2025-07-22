@@ -1,0 +1,42 @@
+{
+  "site": {
+    "title": "MediaCraft",
+    "description": "专业视频编辑工具，用于水印去除和视频合并"
+  },
+  "nav": {
+    "home": "首页",
+    "watermarkRemover": "水印去除",
+    "videoMerger": "视频合并"
+  },
+  "home": {
+    "title": "专业视频编辑工具",
+    "description": "MediaCraft提供智能视频编辑，包括水印去除和视频合并功能。",
+    "heading": "使用MediaCraft转换您的视频"
+  },
+  "features": {
+    "watermark": {
+      "title": "视频水印去除",
+      "description": "使用我们的智能水印去除工具，去除视频中不需要的水印。",
+      "cta": "去除水印"
+    },
+    "merger": {
+      "title": "视频合并",
+      "description": "将多个视频合并为一个无缝文件，精确控制时间段。",
+      "cta": "合并视频"
+    }
+  },
+  "common": {
+    "loading": "加载中...",
+    "error": "发生错误",
+    "success": "成功！",
+    "upload": "上传",
+    "download": "下载",
+    "cancel": "取消",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "start": "开始",
+    "back": "返回",
+    "next": "下一步"
+  }
+}
