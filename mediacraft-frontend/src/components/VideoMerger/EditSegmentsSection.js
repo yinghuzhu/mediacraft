@@ -3,6 +3,7 @@ import { useTranslation } from 'next-i18next';
 import Button from '../UI/Button';
 import Alert from '../UI/Alert';
 import { mergeService } from '../../services/api';
+import Sortable from 'sortablejs';
 
 export default function EditSegmentsSection({ taskUuid, onStartMerge }) {
   const { t } = useTranslation('common');
@@ -49,11 +50,8 @@ export default function EditSegmentsSection({ taskUuid, onStartMerge }) {
     }
   };
   
-  const initSortable = async () => {
+  const initSortable = () => {
     try {
-      // Dynamically import Sortable.js
-      const Sortable = (await import('sortablejs')).default;
-      
       if (sortableContainerRef.current) {
         if (sortableInstance.current) {
           sortableInstance.current.destroy();
