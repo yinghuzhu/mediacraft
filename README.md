@@ -1,8 +1,15 @@
 # MediaCraft
 
-A professional web application for video processing tasks including watermark removal and video merging.
+A professional web application for video processing tasks including watermark removal and video merging, built with modern Next.js frontend and Flask backend architecture.
 
 ## Features
+
+### 🎨 Modern Web Interface
+- **Next.js Frontend**: Modern React-based user interface with server-side rendering
+- **Responsive Design**: Optimized for desktop, tablet, and mobile devices
+- **Internationalization**: Support for English and Chinese languages
+- **Real-time Updates**: Live progress tracking and status updates
+- **SEO Optimized**: Server-side rendering for better search engine visibility
 
 ### Video Watermark Removal
 - 🎬 **Multi-format Support**: Handles MP4, MOV, AVI, MKV video formats
@@ -25,11 +32,16 @@ A professional web application for video processing tasks including watermark re
 
 ### Prerequisites
 
+**Backend Requirements:**
 - Python 3.8+
-- FFmpeg (optional, for audio processing)
+- FFmpeg (for video processing)
 - OpenCV dependencies
 
-### Setup
+**Frontend Requirements:**
+- Node.js 18+
+- npm or yarn
+
+### Development Setup
 
 1. Clone the repository:
 ```bash
@@ -37,37 +49,45 @@ git clone https://github.com/yinghuzhu/mediacraft.git
 cd mediacraft
 ```
 
-2. Install dependencies:
+2. **Backend Setup:**
 ```bash
+# Install Python dependencies
 pip install -r requirements.txt
-```
 
-3. Run the application:
-
-For watermark removal:
-```bash
-python start_video_watermark.py
-```
-
-For video merger:
-```bash
-python start_video_merger.py
-```
-
-Or run the full application:
-```bash
+# Start the Flask backend
 python app.py
+# Backend runs on http://localhost:50001
 ```
 
-4. Open your browser and navigate to:
-```
-http://localhost:5000/                    # Watermark removal
-http://localhost:5000/video-merger.html   # Video merger
+3. **Frontend Setup:**
+```bash
+# Navigate to frontend directory
+cd mediacraft-frontend
+
+# Install Node.js dependencies
+npm install
+
+# Start the Next.js development server
+npm run dev
+# Frontend runs on http://localhost:3000
 ```
 
-5. For production deployment:
-```
-https://mediacraft.yzhu.name
+4. **Access the Application:**
+- **Development**: http://localhost:3000
+- **Production**: https://mediacraft.yzhu.name
+
+### Production Deployment
+
+For production deployment, use the automated deployment scripts:
+
+```bash
+# Create release package
+./scripts/deployment/create_release.sh
+
+# Deploy to server
+tar -xzf releases/mediacraft-2.0.0.tar.gz
+cd mediacraft-2.0.0
+sudo ./install.sh
 ```
 
 ## Usage
@@ -111,30 +131,50 @@ export BATCH_SIZE=30
 
 ```
 mediacraft/
-├── app.py                      # Main application with all routes
-├── config.py                   # Configuration settings
-├── models/                     # Data models
-│   ├── task.py                # Watermark removal task model
-│   ├── merge_task.py          # Video merge task model
-│   ├── merge_video_item.py    # Merge video item model
-│   └── storage.py             # Storage management
-├── processors/                 # Video processing logic
-│   ├── video_processor.py     # Watermark removal processor
-│   └── video_merger.py        # Video merger processor
-├── static/                     # Frontend files
-│   ├── index.html             # Watermark removal interface
-│   └── video-merger.html      # Video merger interface
-├── storage/                    # Data storage (auto-created)
-│   ├── tasks/                 # Watermark removal tasks
-│   ├── regions/               # Watermark regions
-│   ├── merge_tasks/           # Video merge tasks
-│   ├── logs/                  # Processing logs
-│   └── merge_logs/            # Merge processing logs
-├── temp/                       # Temporary files
-├── start_video_watermark.py   # Watermark removal launcher
-├── start_video_merger.py      # Video merger launcher
-├── test_video_watermark.py    # Watermark removal tests
-└── test_video_merger.py       # Video merger tests
+├── 🔧 Backend (Flask API)
+│   ├── scripts/core/
+│   │   ├── app.py             # Main Flask application
+│   │   └── config.py          # Configuration settings
+│   ├── models/                # Data models
+│   │   ├── task.py           # Watermark removal task model
+│   │   ├── merge_task.py     # Video merge task model
+│   │   ├── merge_video_item.py # Merge video item model
+│   │   └── storage.py        # Storage management
+│   ├── processors/            # Video processing logic
+│   │   ├── video_processor.py # Watermark removal processor
+│   │   └── video_merger.py   # Video merger processor
+│   ├── static/               # Backend static files
+│   └── storage/              # Data storage (auto-created)
+│       ├── tasks/            # Watermark removal tasks
+│       ├── regions/          # Watermark regions
+│       ├── merge_tasks/      # Video merge tasks
+│       └── logs/             # Processing logs
+├── 🎨 Frontend (Next.js)
+│   └── mediacraft-frontend/
+│       ├── src/
+│       │   ├── components/   # React components
+│       │   ├── pages/        # Next.js pages
+│       │   ├── services/     # API services
+│       │   └── styles/       # Styling files
+│       ├── public/
+│       │   └── locales/      # Internationalization files
+│       └── package.json      # Node.js dependencies
+├── 🚀 Deployment
+│   └── scripts/deployment/
+│       ├── create_release.sh # Release package creation
+│       ├── install.sh        # Automated installation
+│       └── nginx_*.conf      # Nginx configurations
+├── 📝 Documentation
+│   └── docs/                 # Comprehensive documentation
+├── 🧪 Testing
+│   ├── test_video_watermark.py # Watermark removal tests
+│   ├── test_video_merger.py    # Video merger tests
+│   └── test_upload_fix.py      # Upload functionality tests
+└── 🔗 Compatibility Links
+    ├── app.py -> scripts/core/app.py
+    ├── config.py -> scripts/core/config.py
+    ├── start_video_watermark.py -> scripts/launchers/start_video_watermark.py
+    └── start_video_merger.py -> scripts/launchers/start_video_merger.py
 ```
 
 ## API Endpoints
@@ -171,34 +211,76 @@ numpy>=1.26.0
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Deployment
+## Architecture
 
-### Production Setup
+### Frontend-Backend Separation
 
-For production deployment at mediacraft.yzhu.name:
+MediaCraft uses a modern architecture with separated frontend and backend:
 
-1. Configure DNS records to point mediacraft.yzhu.name to your server
-2. Set up a web server (Nginx/Apache) with the following configuration:
+- **Frontend**: Next.js application (Port 3000)
+  - Server-side rendering for SEO
+  - Internationalization support
+  - Responsive design
+  - Real-time updates
 
+- **Backend**: Flask API server (Port 50001)
+  - RESTful API endpoints
+  - Video processing logic
+  - File management
+  - Task scheduling
+
+- **Reverse Proxy**: Nginx
+  - Routes frontend requests to Next.js
+  - Routes API requests to Flask backend
+  - Handles SSL termination
+  - Static file serving
+
+### Deployment
+
+#### Automated Deployment
+
+Use the provided deployment scripts for easy production setup:
+
+```bash
+# Create release package
+./scripts/deployment/create_release.sh
+
+# Deploy to server
+scp releases/mediacraft-2.0.0.tar.gz user@server:/tmp/
+ssh user@server
+cd /tmp && tar -xzf mediacraft-2.0.0.tar.gz
+cd mediacraft-2.0.0 && sudo ./install.sh
+```
+
+#### Manual Production Setup
+
+1. **Configure DNS**: Point mediacraft.yzhu.name to your server
+2. **Install Dependencies**: Node.js 18+, Python 3.8+, FFmpeg
+3. **Setup Services**: Use systemd for process management
+4. **Configure Nginx**: Proxy frontend and API requests
+5. **SSL Setup**: Use Let's Encrypt for HTTPS
+
+Example Nginx configuration:
 ```nginx
-# Nginx example configuration
 server {
-    listen 80;
+    listen 443 ssl;
     server_name mediacraft.yzhu.name;
-
+    
+    # Frontend (Next.js)
     location / {
-        proxy_pass http://localhost:50001;
+        proxy_pass http://localhost:3000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
+    
+    # Backend API
+    location /api/ {
+        proxy_pass http://localhost:50001/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        client_max_body_size 500M;
+    }
 }
-```
-
-3. Set up SSL with Let's Encrypt for secure HTTPS connections
-4. Use a production WSGI server like Gunicorn:
-
-```bash
-gunicorn -w 4 -b 127.0.0.1:50001 'app:app'
 ```
 
 ## 📚 文档

@@ -1,13 +1,25 @@
 # MediaCraft Frontend
 
-This is the Next.js frontend for MediaCraft, a professional video editing tool.
+This is the Next.js frontend for MediaCraft, a professional video processing web application.
 
 ## Features
 
-- Video Watermark Removal
-- Video Merging
-- Internationalization (English and Chinese)
-- SEO Friendly
+### 🎨 Modern Web Interface
+- **Next.js 14**: Latest React framework with App Router
+- **Server-Side Rendering**: Improved SEO and performance
+- **Responsive Design**: Optimized for all device sizes
+- **Real-time Updates**: Live progress tracking and notifications
+
+### 🌍 Internationalization
+- **Multi-language Support**: English and Chinese
+- **Dynamic Language Switching**: Change language without page reload
+- **Localized Content**: All UI elements and messages translated
+
+### 🎬 Video Processing Features
+- **Watermark Removal**: AI-powered watermark detection and removal
+- **Video Merging**: Combine multiple videos with precise control
+- **Drag & Drop Interface**: Intuitive file upload and management
+- **Progress Tracking**: Real-time processing status updates
 
 ## Getting Started
 
@@ -70,12 +82,37 @@ docker-compose up -d
 
 ## Project Structure
 
-- `/public` - Static files and localization resources
-- `/src/components` - Reusable UI components
-- `/src/pages` - Next.js pages and API routes
-- `/src/services` - API services
-- `/src/styles` - Global styles
-- `/src/utils` - Utility functions
+```
+mediacraft-frontend/
+├── 📁 public/                    # Static assets
+│   ├── locales/                  # Internationalization files
+│   │   ├── en/common.json       # English translations
+│   │   └── zh/common.json       # Chinese translations
+│   ├── manifest.json            # PWA manifest
+│   └── robots.txt               # SEO robots file
+├── 📁 src/
+│   ├── components/              # Reusable React components
+│   │   ├── FileUpload.js       # File upload component
+│   │   ├── ProgressBar.js      # Progress tracking component
+│   │   └── LanguageSwitcher.js # Language selection component
+│   ├── pages/                   # Next.js pages (App Router)
+│   │   ├── index.js            # Home page
+│   │   ├── watermark-remover.js # Watermark removal page
+│   │   ├── video-merger.js     # Video merger page
+│   │   └── _app.js             # App configuration
+│   ├── services/               # API integration
+│   │   └── api.js              # Backend API client
+│   ├── styles/                 # Styling files
+│   │   ├── globals.css         # Global styles
+│   │   └── components.css      # Component styles
+│   └── utils/                  # Utility functions
+│       ├── constants.js        # Application constants
+│       └── helpers.js          # Helper functions
+├── 📄 next.config.js           # Next.js configuration
+├── 📄 next-i18next.config.js   # Internationalization config
+├── 📄 tailwind.config.js       # Tailwind CSS configuration
+└── 📄 package.json             # Dependencies and scripts
+```
 
 ## Internationalization
 
@@ -86,15 +123,55 @@ The application supports English and Chinese languages. Translations are stored 
 
 ## API Integration
 
-The frontend communicates with the Flask backend API. API services are defined in:
+The frontend communicates with the Flask backend API through a centralized service layer:
 
-- `/src/services/api.js`
+### API Configuration
+- **Development**: Next.js rewrites proxy API requests to `http://localhost:50001`
+- **Production**: Nginx proxies `/api/*` requests to the Flask backend
+- **Base URL**: Automatically configured based on environment
+
+### API Services (`/src/services/api.js`)
+```javascript
+// Watermark removal services
+watermarkService.uploadVideo(file, onProgress)
+watermarkService.getVideoFrames(taskUuid)
+watermarkService.selectFrame(taskUuid, frameNumber)
+watermarkService.selectRegions(taskUuid, regions)
+watermarkService.getTaskStatus(taskUuid)
+watermarkService.getDownloadUrl(taskUuid)
+
+// Video merger services
+mergeService.createTask(taskName, options)
+mergeService.uploadVideo(taskUuid, file, onProgress)
+mergeService.getTask(taskUuid)
+mergeService.startMerge(taskUuid)
+mergeService.getTaskStatus(taskUuid)
+mergeService.getDownloadUrl(taskUuid)
+```
 
 ## Performance Optimizations
 
-- Image optimization with Next.js Image component
-- Font optimization
-- Code splitting
-- Server-side rendering for SEO
-- Static generation for faster page loads
-- Compression and minification
+### Next.js Optimizations
+- **Image Optimization**: Automatic image optimization with Next.js Image component
+- **Font Optimization**: Automatic font loading optimization
+- **Code Splitting**: Automatic code splitting for faster page loads
+- **Static Generation**: Pre-rendered pages for better performance
+- **Server-Side Rendering**: SEO-friendly rendering
+
+### Build Optimizations
+- **SWC Minification**: Fast Rust-based minification
+- **Compression**: Gzip compression enabled
+- **Tree Shaking**: Unused code elimination
+- **Bundle Analysis**: Webpack bundle analyzer integration
+
+### Runtime Optimizations
+- **Lazy Loading**: Components loaded on demand
+- **Caching**: Aggressive caching strategies
+- **Prefetching**: Intelligent link prefetching
+- **Service Worker**: PWA capabilities for offline support
+
+### Development Experience
+- **Fast Refresh**: Instant feedback during development
+- **TypeScript Support**: Optional TypeScript integration
+- **ESLint Integration**: Code quality enforcement
+- **Hot Module Replacement**: Live code updates

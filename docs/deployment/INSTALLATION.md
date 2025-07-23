@@ -5,23 +5,58 @@
 ### 最低要求
 - **操作系统**: Linux, macOS, Windows
 - **Python**: 3.8 或更高版本
-- **内存**: 2GB RAM
-- **存储**: 5GB 可用空间
+- **Node.js**: 18 或更高版本
+- **内存**: 4GB RAM
+- **存储**: 10GB 可用空间
 - **网络**: 互联网连接（用于依赖下载）
 
 ### 推荐配置
 - **操作系统**: Ubuntu 20.04+ / macOS 12+ / Windows 10+
 - **Python**: 3.10 或更高版本
-- **内存**: 4GB RAM 或更多
-- **存储**: 10GB 可用空间
+- **Node.js**: 18+ LTS 版本
+- **内存**: 8GB RAM 或更多
+- **存储**: 20GB 可用空间
 - **CPU**: 多核处理器（视频处理性能更好）
 
 ## 🔧 依赖软件
 
-### 必需依赖
+### 后端依赖
 1. **Python 3.8+**
 2. **FFmpeg** (用于视频处理)
 3. **OpenCV** (通过 pip 安装)
+
+### 前端依赖
+1. **Node.js 18+** (LTS 版本推荐)
+2. **npm** 或 **yarn** (包管理器)
+
+### Node.js 安装
+
+#### macOS
+```bash
+# 使用 Homebrew
+brew install node@18
+
+# 或使用 nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+nvm install 18
+nvm use 18
+```
+
+#### Ubuntu/Debian
+```bash
+# 使用 NodeSource 仓库
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# 验证安装
+node --version
+npm --version
+```
+
+#### Windows
+1. 从 [Node.js 官网](https://nodejs.org/) 下载 LTS 版本
+2. 运行安装程序
+3. 验证安装：`node --version`
 
 ### FFmpeg 安装
 
@@ -45,67 +80,192 @@ sudo apt install ffmpeg
 #### 验证安装
 ```bash
 ffmpeg -version
+node --version
+npm --version
 ```
 
 ## 📦 安装步骤
 
-### 1. 克隆项目
+### 开发环境安装
+
+#### 1. 克隆项目
 ```bash
 git clone https://github.com/yinghuzhu/mediacraft.git
 cd mediacraft
 ```
 
-### 2. 创建虚拟环境（推荐）
+#### 2. 后端设置
 ```bash
-# Python 3.8+
+# 创建 Python 虚拟环境
 python3 -m venv venv
 
 # 激活虚拟环境
 # macOS/Linux
 source venv/bin/activate
-
 # Windows
 venv\Scripts\activate
-```
 
-### 3. 安装 Python 依赖
-```bash
+# 安装 Python 依赖
 pip install -r requirements.txt
 ```
 
-### 4. 验证安装
+#### 3. 前端设置
 ```bash
+# 进入前端目录
+cd mediacraft-frontend
+
+# 安装 Node.js 依赖
+npm install
+
+# 返回项目根目录
+cd ..
+```
+
+#### 4. 验证安装
+```bash
+# 检查后端依赖
+python -c "import cv2, numpy, flask, flask_cors; print('后端依赖已安装')"
+
+# 检查前端依赖
+cd mediacraft-frontend && npm list --depth=0 && cd ..
+
 # 运行测试
 python test_video_watermark.py
 python test_video_merger.py
+```
 
-# 检查依赖
-python -c "import cv2, numpy, flask; print('所有依赖已安装')"
+### 生产环境安装
+
+#### 使用自动化部署脚本（推荐）
+
+```bash
+# 1. 创建发布包
+./scripts/deployment/create_release.sh
+
+# 2. 上传到服务器
+scp releases/mediacraft-2.0.0.tar.gz user@server:/tmp/
+
+# 3. 在服务器上安装
+ssh user@server
+cd /tmp
+tar -xzf mediacraft-2.0.0.tar.gz
+cd mediacraft-2.0.0
+sudo ./install.sh
+```
+
+#### 手动安装步骤
+
+```bash
+# 1. 安装系统依赖
+# Ubuntu/Debian
+sudo apt update
+sudo apt install -y python3 python3-pip python3-venv nodejs npm ffmpeg nginx
+
+# CentOS/RHEL
+sudo dnf install -y python3 python3-pip nodejs npm ffmpeg nginx
+
+# 2. 创建安装目录
+sudo mkdir -p /var/www/mediacraft
+sudo chown $USER:$USER /var/www/mediacraft
+
+# 3. 复制项目文件
+cp -r * /var/www/mediacraft/
+cd /var/www/mediacraft
+
+# 4. 设置后端
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 5. 设置前端
+cd mediacraft-frontend
+npm install --production
+npm run build
+cd ..
+
+# 6. 配置服务
+sudo cp scripts/deployment/mediacraft-*.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable mediacraft-backend mediacraft-frontend
+
+# 7. 配置 Nginx
+sudo cp scripts/deployment/nginx_mediacraft.conf /etc/nginx/sites-available/mediacraft
+sudo ln -s /etc/nginx/sites-available/mediacraft /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
 ## 🚀 启动应用
 
 ### 开发模式
 
-#### 启动水印去除功能
+#### 启动后端服务
 ```bash
-python start_video_watermark.py
+# 激活虚拟环境
+source venv/bin/activate
+
+# 启动 Flask 后端
+python app.py
+# 后端运行在 http://localhost:50001
 ```
 
-#### 启动视频合并功能
+#### 启动前端服务
 ```bash
+# 在新终端中进入前端目录
+cd mediacraft-frontend
+
+# 启动 Next.js 开发服务器
+npm run dev
+# 前端运行在 http://localhost:3000
+```
+
+#### 单独启动特定功能
+```bash
+# 仅启动水印去除功能
+python start_video_watermark.py
+
+# 仅启动视频合并功能
 python start_video_merger.py
 ```
 
-#### 启动完整应用
+### 生产模式
+
+#### 使用 systemd 服务
 ```bash
-python app.py
+# 启动服务
+sudo systemctl start mediacraft-backend
+sudo systemctl start mediacraft-frontend
+sudo systemctl start nginx
+
+# 检查状态
+sudo systemctl status mediacraft-backend
+sudo systemctl status mediacraft-frontend
+```
+
+#### 手动启动
+```bash
+# 启动后端
+cd /var/www/mediacraft
+source venv/bin/activate
+python app.py &
+
+# 启动前端
+cd /var/www/mediacraft/frontend
+npm start &
 ```
 
 ### 访问地址
-- **水印去除**: http://localhost:50001/
-- **视频合并**: http://localhost:50001/video-merger.html
-- **API 文档**: http://localhost:50001/api/health
+
+#### 开发环境
+- **前端应用**: http://localhost:3000
+- **后端 API**: http://localhost:50001/api/health
+- **水印去除**: http://localhost:3000/watermark-remover
+- **视频合并**: http://localhost:3000/video-merger
+
+#### 生产环境
+- **主应用**: https://mediacraft.yzhu.name
+- **水印去除**: https://mediacraft.yzhu.name/watermark-remover
+- **视频合并**: https://mediacraft.yzhu.name/video-merger
+- **API 健康检查**: https://mediacraft.yzhu.name/api/health
 
 ## ⚙️ 配置选项
 
