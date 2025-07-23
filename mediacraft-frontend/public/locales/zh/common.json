@@ -38,5 +38,105 @@
     "start": "开始",
     "back": "返回",
     "next": "下一步"
+  },
+  "watermarkRemover": {
+    "title": "视频水印去除",
+    "description": "通过三个简单步骤去除视频中不需要的水印。",
+    "steps": {
+      "upload": "上传",
+      "frameSelect": "选择帧",
+      "regionSelect": "标记水印",
+      "processing": "处理中"
+    },
+    "upload": {
+      "title": "上传视频",
+      "dragDrop": "拖放视频到这里，或点击浏览",
+      "supportedFormats": "支持MP4、MOV、AVI和MKV格式（最大500MB）"
+    },
+    "frameSelector": {
+      "title": "选择带有水印的帧",
+      "instruction": "选择一个水印清晰可见的帧：",
+      "loading": "正在加载视频帧...",
+      "confirm": "确认选择"
+    },
+    "regionSelector": {
+      "title": "选择水印区域",
+      "instruction": "点击并拖动以选择要去除的水印区域：",
+      "selectedRegions": "已选区域",
+      "noRegionsSelected": "尚未选择区域。点击并拖动图像以选择水印区域。",
+      "noRegions": "请至少选择一个水印区域",
+      "region": "区域",
+      "submit": "去除水印"
+    },
+    "processing": {
+      "title": "处理视频",
+      "inProgress": "正在从视频中去除水印...",
+      "completed": "水印去除完成！",
+      "failed": "水印去除失败",
+      "unknown": "未知状态",
+      "download": "下载视频"
+    },
+    "errors": {
+      "unsupportedFormat": "不支持的视频格式。请上传MP4、MOV、AVI或MKV文件。",
+      "fileTooLarge": "文件大小超过500MB限制。",
+      "uploadFailed": "上传视频失败。请重试。",
+      "framesLoadFailed": "加载视频帧失败。请重试。",
+      "frameSelectFailed": "选择帧失败。请重试。",
+      "regionsSubmitFailed": "提交水印区域失败。请重试。"
+    }
+  },
+  "videoMerger": {
+    "title": "视频合并",
+    "description": "将多个视频合并为一个无缝文件，精确控制时间段。",
+    "steps": {
+      "createTask": "创建任务",
+      "uploadVideos": "上传视频",
+      "editSegments": "编辑片段",
+      "processing": "处理中"
+    },
+    "createTask": {
+      "title": "创建合并任务",
+      "taskName": "任务名称",
+      "taskNamePlaceholder": "我的视频合集",
+      "mergeMode": "合并模式",
+      "audioHandling": "音频处理",
+      "qualityPreset": "质量预设",
+      "create": "创建任务"
+    },
+    "upload": {
+      "title": "上传视频",
+      "dragDrop": "拖放视频到这里，或点击浏览",
+      "supportedFormats": "支持MP4、MOV、AVI和MKV格式（最大500MB）",
+      "maxVideos": "最多10个视频"
+    },
+    "editSegments": {
+      "title": "编辑视频片段",
+      "startTime": "开始时间（秒）",
+      "endTime": "结束时间（秒）",
+      "update": "更新",
+      "reset": "重置",
+      "duration": "时长",
+      "resolution": "分辨率",
+      "segment": "片段",
+      "totalDuration": "总时长",
+      "totalVideos": "视频总数",
+      "startMerging": "开始合并"
+    },
+    "processing": {
+      "title": "处理视频",
+      "inProgress": "正在合并视频...",
+      "completed": "视频合并完成！",
+      "failed": "视频合并失败",
+      "unknown": "未知状态",
+      "download": "下载合并视频"
+    },
+    "errors": {
+      "unsupportedFormat": "不支持的视频格式。请上传MP4、MOV、AVI或MKV文件。",
+      "fileTooLarge": "文件大小超过500MB限制。",
+      "maxVideosReached": "已达到最大视频数量（10个）。",
+      "uploadFailed": "上传视频失败。请重试。",
+      "invalidTimeSegment": "无效的时间段。开始时间必须小于结束时间。",
+      "startMergeFailed": "启动合并过程失败。请重试。"
+    }
   }
 }

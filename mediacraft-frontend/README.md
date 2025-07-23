@@ -50,6 +50,24 @@ Start the production server:
 npm run start
 ```
 
+## Docker Deployment
+
+You can deploy the application using Docker:
+
+```bash
+# Build the Docker image
+docker build -t mediacraft-frontend .
+
+# Run the container
+docker run -p 3000:3000 mediacraft-frontend
+```
+
+Or using Docker Compose to deploy both frontend and backend:
+
+```bash
+docker-compose up -d
+```
+
 ## Project Structure
 
 - `/public` - Static files and localization resources
@@ -71,3 +89,12 @@ The application supports English and Chinese languages. Translations are stored 
 The frontend communicates with the Flask backend API. API services are defined in:
 
 - `/src/services/api.js`
+
+## Performance Optimizations
+
+- Image optimization with Next.js Image component
+- Font optimization
+- Code splitting
+- Server-side rendering for SEO
+- Static generation for faster page loads
+- Compression and minification
