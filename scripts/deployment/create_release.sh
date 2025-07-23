@@ -25,10 +25,14 @@ cp -r models/ $RELEASE_DIR/
 cp -r processors/ $RELEASE_DIR/
 cp -r scripts/ $RELEASE_DIR/
 cp -r static/ $RELEASE_DIR/
-cp -r storage/ $RELEASE_DIR/ 2>/dev/null || mkdir -p $RELEASE_DIR/storage
-cp -r temp/ $RELEASE_DIR/ 2>/dev/null || mkdir -p $RELEASE_DIR/temp
 cp requirements.txt $RELEASE_DIR/
 cp README.md $RELEASE_DIR/
+
+# Create empty directories for storage and temp (don't copy existing content)
+mkdir -p $RELEASE_DIR/storage/tasks
+mkdir -p $RELEASE_DIR/storage/uploads
+mkdir -p $RELEASE_DIR/storage/merge_tasks
+mkdir -p $RELEASE_DIR/temp
 
 # Create symbolic links for backward compatibility
 (cd $RELEASE_DIR && \
@@ -40,7 +44,12 @@ ln -sf scripts/launchers/start_video_merger.py start_video_merger.py)
 echo "Copying frontend build..."
 # Copy frontend build
 mkdir -p $RELEASE_DIR/frontend
+
+# Copy .next directory but exclude cache
 cp -r mediacraft-frontend/.next $RELEASE_DIR/frontend/
+rm -rf $RELEASE_DIR/frontend/.next/cache
+
+# Copy other frontend files
 cp -r mediacraft-frontend/public $RELEASE_DIR/frontend/
 cp mediacraft-frontend/package.json $RELEASE_DIR/frontend/
 cp mediacraft-frontend/next.config.js $RELEASE_DIR/frontend/
@@ -349,6 +358,15 @@ echo "Frontend: Next.js" >> $RELEASE_DIR/VERSION
 echo "Backend: Flask + FFmpeg" >> $RELEASE_DIR/VERSION
 
 # Create release archive
+echo "Cleaning up unnecessary files..."
+# Remove Python cache files
+find $RELEASE_DIR -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+find $RELEASE_DIR -name "*.pyc" -type f -delete 2>/dev/null || true
+
+# Remove other unnecessary files
+rm -rf $RELEASE_DIR/.git* 2>/dev/null || true
+rm -rf $RELEASE_DIR/node_modules 2>/dev/null || true
+
 echo "Creating release archive..."
 (cd releases && tar -czf "${RELEASE_NAME}.tar.gz" ${RELEASE_NAME})
 
