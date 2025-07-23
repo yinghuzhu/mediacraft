@@ -25,8 +25,12 @@ export default function EditSegmentsSection({ taskUuid, onStartMerge }) {
     }
     
     return () => {
-      if (sortableInstance.current) {
-        sortableInstance.current.destroy();
+      try {
+        if (sortableInstance.current && typeof sortableInstance.current.destroy === 'function') {
+          sortableInstance.current.destroy();
+        }
+      } catch (err) {
+        console.error('Error destroying sortable instance:', err);
       }
     };
   }, [taskData]);
@@ -53,10 +57,17 @@ export default function EditSegmentsSection({ taskUuid, onStartMerge }) {
   const initSortable = () => {
     try {
       if (sortableContainerRef.current) {
-        if (sortableInstance.current) {
-          sortableInstance.current.destroy();
+        // Safely destroy existing instance if it exists
+        try {
+          if (sortableInstance.current && typeof sortableInstance.current.destroy === 'function') {
+            sortableInstance.current.destroy();
+            sortableInstance.current = null;
+          }
+        } catch (err) {
+          console.error('Error destroying previous sortable instance:', err);
         }
         
+        // Create new instance
         sortableInstance.current = new Sortable(sortableContainerRef.current, {
           animation: 150,
           handle: '.drag-handle',
@@ -66,6 +77,7 @@ export default function EditSegmentsSection({ taskUuid, onStartMerge }) {
       }
     } catch (err) {
       console.error('Failed to initialize sortable:', err);
+      sortableInstance.current = null;
     }
   };
   

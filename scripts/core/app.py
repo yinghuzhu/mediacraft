@@ -15,6 +15,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..
 sys.path.insert(0, project_root)
 
 from flask import Flask, request, jsonify, send_file, render_template
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from models.task import VideoWatermarkTask
 from models.merge_task import VideoMergeTask
@@ -30,6 +31,9 @@ template_folder = os.path.join(project_root, 'templates')
 app = Flask(__name__, 
             static_folder=static_folder,
             template_folder=template_folder)
+
+# Enable CORS for all routes
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Initialize storage
 storage = TaskStorage()
