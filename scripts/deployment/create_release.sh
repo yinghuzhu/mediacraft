@@ -15,15 +15,38 @@ rm -rf $RELEASE_DIR
 mkdir -p $RELEASE_DIR
 
 echo "Building Next.js frontend..."
+# Save current directory
+CURRENT_DIR=$(pwd)
 cd mediacraft-frontend
 npm run build
-cd ..
+# Return to original directory
+cd "$CURRENT_DIR"
 
 echo "Copying backend files..."
 # Copy backend files
-cp -r models/ $RELEASE_DIR/
-cp -r processors/ $RELEASE_DIR/
-cp -r static/ $RELEASE_DIR/
+# Create models directory and copy files
+echo "Creating models directory..."
+mkdir -p $RELEASE_DIR/models
+cp models/__init__.py $RELEASE_DIR/models/ 2>/dev/null || echo "  - __init__.py not found"
+cp models/merge_task.py $RELEASE_DIR/models/ 2>/dev/null || echo "  - merge_task.py not found"
+cp models/merge_video_item.py $RELEASE_DIR/models/ 2>/dev/null || echo "  - merge_video_item.py not found"
+cp models/storage.py $RELEASE_DIR/models/ 2>/dev/null || echo "  - storage.py not found"
+cp models/task.py $RELEASE_DIR/models/ 2>/dev/null || echo "  - task.py not found"
+
+# Create processors directory and copy files
+echo "Creating processors directory..."
+mkdir -p $RELEASE_DIR/processors
+cp processors/__init__.py $RELEASE_DIR/processors/ 2>/dev/null || echo "  - __init__.py not found"
+cp processors/video_merger.py $RELEASE_DIR/processors/ 2>/dev/null || echo "  - video_merger.py not found"
+cp processors/video_processor.py $RELEASE_DIR/processors/ 2>/dev/null || echo "  - video_processor.py not found"
+
+if [ -d "static" ]; then
+    echo "Copying static directory..."
+    cp -r static/ $RELEASE_DIR/
+else
+    echo "WARNING: static directory not found!"
+fi
+
 cp requirements.txt $RELEASE_DIR/
 cp README.md $RELEASE_DIR/
 
