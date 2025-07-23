@@ -10,6 +10,12 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   async rewrites() {
+    // 在生产环境中，不使用重写规则，让Nginx处理API代理
+    if (process.env.NODE_ENV === 'production') {
+      return [];
+    }
+
+    // 开发环境中使用重写规则代理到本地后端
     return [
       {
         // Proxy API requests to Flask backend
