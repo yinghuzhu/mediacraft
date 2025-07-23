@@ -23,10 +23,15 @@ echo "Copying backend files..."
 # Copy backend files
 cp -r models/ $RELEASE_DIR/
 cp -r processors/ $RELEASE_DIR/
-cp -r scripts/ $RELEASE_DIR/
 cp -r static/ $RELEASE_DIR/
 cp requirements.txt $RELEASE_DIR/
 cp README.md $RELEASE_DIR/
+
+# Copy scripts directory with proper structure
+mkdir -p $RELEASE_DIR/core
+cp -r scripts/core/* $RELEASE_DIR/core/
+mkdir -p $RELEASE_DIR/launchers
+cp -r scripts/launchers/* $RELEASE_DIR/launchers/
 
 # Create empty directories for storage and temp (don't copy existing content)
 mkdir -p $RELEASE_DIR/storage/tasks
@@ -36,10 +41,10 @@ mkdir -p $RELEASE_DIR/temp
 
 # Create symbolic links for backward compatibility
 (cd $RELEASE_DIR && \
-ln -sf scripts/core/app.py app.py && \
-ln -sf scripts/core/config.py config.py && \
-ln -sf scripts/launchers/start_video_watermark.py start_video_watermark.py && \
-ln -sf scripts/launchers/start_video_merger.py start_video_merger.py)
+ln -sf core/app.py app.py && \
+ln -sf core/config.py config.py && \
+ln -sf launchers/start_video_watermark.py start_video_watermark.py && \
+ln -sf launchers/start_video_merger.py start_video_merger.py)
 
 echo "Copying frontend build..."
 # Copy frontend build
@@ -72,7 +77,7 @@ User=www-data
 Group=www-data
 WorkingDirectory=/var/www/mediacraft
 Environment=PATH=/var/www/mediacraft/venv/bin
-ExecStart=/var/www/mediacraft/venv/bin/python /var/www/mediacraft/scripts/core/app.py
+ExecStart=/var/www/mediacraft/venv/bin/python /var/www/mediacraft/app.py
 Restart=always
 RestartSec=10
 
@@ -116,7 +121,58 @@ server {
     add_header Referrer-Policy "no-referrer-when-downgrade" always;
     add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
     
-    # Frontend (Next.js)
+    # File upload settings
+    client_max_body_size 500M;
+    
+    # Backend API - 优先匹配
+    location ^~ /api/ {
+        proxy_pass http://localhost:50001/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Improved timeout settings
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
+        
+        # Handle large file uploads
+        client_max_body_size 500M;
+        proxy_request_buffering off;
+        
+        # Buffer settings
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+        
+        # In case of errors, try the next upstream server (if configured)
+        proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+    }
+    
+    # Static files from backend
+    location ^~ /static/ {
+        alias /var/www/mediacraft/static/;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    
+    # Next.js static files
+    location ^~ /_next/static/ {
+        alias /var/www/mediacraft/frontend/.next/static/;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    
+    # Public files
+    location ^~ /public/ {
+        alias /var/www/mediacraft/frontend/public/;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    
+    # Frontend (Next.js) - 默认路由，放在最后
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
@@ -127,31 +183,124 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
-        proxy_read_timeout 86400;
+        
+        # Improved timeout settings
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
+        
+        # Buffer settings
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+        
+        # In case of errors, try the next upstream server (if configured)
+        proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
     }
     
-    # Backend API
-    location /api/ {
-        proxy_pass http://localhost:50001;
+    # Logs
+    access_log /var/log/nginx/mediacraft_access.log;
+    error_log /var/log/nginx/mediacraft_error.log;
+}
+
+# HTTPS server
+server {
+    listen 443 ssl;
+    server_name mediacraft.yzhu.name;
+
+    # SSL configuration
+    ssl_certificate /etc/letsencrypt/live/mediacraft.yzhu.name/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/mediacraft.yzhu.name/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA384;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:10m;
+    ssl_stapling on;
+    ssl_stapling_verify on;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options SAMEORIGIN;
+    add_header X-XSS-Protection "1; mode=block";
+    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+
+    # File upload settings
+    client_max_body_size 500M;
+    
+    # Backend API - 优先匹配
+    location ^~ /api/ {
+        proxy_pass http://localhost:50001/api/;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 300;
-        proxy_connect_timeout 300;
-        proxy_send_timeout 300;
+        
+        # Improved timeout settings
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
         
         # Handle large file uploads
         client_max_body_size 500M;
         proxy_request_buffering off;
+        
+        # Buffer settings
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+        
+        # In case of errors, try the next upstream server (if configured)
+        proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
     }
     
-    # Static files
-    location /static/ {
+    # Static files from backend
+    location ^~ /static/ {
         alias /var/www/mediacraft/static/;
         expires 1y;
         add_header Cache-Control "public, immutable";
+    }
+    
+    # Next.js static files
+    location ^~ /_next/static/ {
+        alias /var/www/mediacraft/frontend/.next/static/;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    
+    # Public files
+    location ^~ /public/ {
+        alias /var/www/mediacraft/frontend/public/;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    
+    # Frontend (Next.js) - 默认路由，放在最后
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        
+        # Improved timeout settings
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
+        
+        # Buffer settings
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+        
+        # In case of errors, try the next upstream server (if configured)
+        proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
     }
     
     # Logs
