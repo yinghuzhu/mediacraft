@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import Button from '../UI/Button';
 import Alert from '../UI/Alert';
-import { mergeService } from '../../services/api';
+import { videoMergerService } from '../../services/api';
 
 export default function UploadSection({ taskUuid, onVideoUploaded }) {
   const { t } = useTranslation('common');
@@ -97,7 +97,7 @@ export default function UploadSection({ taskUuid, onVideoUploaded }) {
         setCurrentFileIndex(i);
         setUploadProgress(0);
         
-        const response = await mergeService.uploadVideo(
+        const response = await videoMergerService.uploadVideo(
           taskUuid, 
           files[i],
           (progress) => {
@@ -105,12 +105,17 @@ export default function UploadSection({ taskUuid, onVideoUploaded }) {
           }
         );
         
-        if (response.data && response.data.code === 10000) {
+        console.log('Upload response:', response);
+        
+        // 检查响应格式：后端返回 {success: true, data: {...}}
+        if (response.data && response.data.success) {
           // Successfully uploaded
           if (i === files.length - 1) {
-            onVideoUploaded(response.data.data);
+            // 所有文件上传完成，进入下一步
+            onVideoUploaded();
           }
         } else {
+          console.error('Upload failed:', response);
           setError(`${files[i].name}: ${response.data?.message || t('videoMerger.errors.uploadFailed')}`);
           break;
         }

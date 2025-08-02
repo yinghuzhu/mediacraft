@@ -22,10 +22,11 @@ export default function FrameSelector({ taskUuid, onFrameSelected }) {
     try {
       const response = await watermarkService.getVideoFrames(taskUuid);
       
-      if (response.data && response.data.code === 10000) {
-        setFrames(response.data.data.frames || []);
+      if (response.data && response.data.frames) {
+        // 后端现在返回包含base64图片数据的帧信息
+        setFrames(response.data.frames);
       } else {
-        setError(response.data?.message || t('watermarkRemover.errors.framesLoadFailed'));
+        setError(response.data?.message || response.data?.error || t('watermarkRemover.errors.framesLoadFailed'));
       }
     } catch (err) {
       setError(err.message || t('watermarkRemover.errors.framesLoadFailed'));
@@ -46,10 +47,17 @@ export default function FrameSelector({ taskUuid, onFrameSelected }) {
     try {
       const response = await watermarkService.selectFrame(taskUuid, selectedFrame.frame_number);
       
-      if (response.data && response.data.code === 10000) {
-        onFrameSelected(response.data.data);
+      console.log('Frame selection response:', response.data);
+      if (response.data && response.data.success) {
+        const frameData = {
+          selected_frame: response.data.selected_frame,
+          frame_number: selectedFrame.frame_number,
+          frame_data: response.data.frame_data // 传递帧图像数据
+        };
+        console.log('Frame data being passed to parent:', frameData);
+        onFrameSelected(frameData);
       } else {
-        setError(response.data?.message || t('watermarkRemover.errors.frameSelectFailed'));
+        setError(response.data?.message || response.data?.error || t('watermarkRemover.errors.frameSelectFailed'));
       }
     } catch (err) {
       setError(err.message || t('watermarkRemover.errors.frameSelectFailed'));

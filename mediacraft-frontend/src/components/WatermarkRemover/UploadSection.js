@@ -70,10 +70,16 @@ export default function UploadSection({ onUploadSuccess }) {
         setUploadProgress(progress);
       });
       
-      if (response.data && response.data.code === 10000) {
-        onUploadSuccess(response.data.data);
+      if (response.data && response.data.task_id) {
+        // 后端返回格式: { task_id, status, message }
+        onUploadSuccess({
+          task_uuid: response.data.task_id,
+          task_id: response.data.task_id,
+          status: response.data.status,
+          message: response.data.message
+        });
       } else {
-        setError(response.data?.message || t('watermarkRemover.errors.uploadFailed'));
+        setError(response.data?.message || response.data?.error || t('watermarkRemover.errors.uploadFailed'));
       }
     } catch (err) {
       setError(err.message || t('watermarkRemover.errors.uploadFailed'));

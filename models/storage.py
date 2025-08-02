@@ -8,7 +8,7 @@ import time
 import shutil
 from typing import Dict, List, Optional, Any, Union
 from datetime import datetime, timedelta
-import config
+from config import get_current_config
 from .task import VideoWatermarkTask
 from .merge_task import VideoMergeTask
 from .merge_video_item import MergeVideoItem
@@ -19,14 +19,14 @@ class TaskStorage:
     def __init__(self):
         """Initialize storage"""
         # Watermark removal directories
-        self.tasks_dir = os.path.join(config.STORAGE_DIR, 'tasks')
-        self.regions_dir = os.path.join(config.STORAGE_DIR, 'regions')
-        self.logs_dir = os.path.join(config.STORAGE_DIR, 'logs')
+        self.tasks_dir = os.path.join(get_current_config().STORAGE_DIR, 'tasks')
+        self.regions_dir = os.path.join(get_current_config().STORAGE_DIR, 'regions')
+        self.logs_dir = os.path.join(get_current_config().STORAGE_DIR, 'logs')
         
         # Video merge directories
-        self.merge_tasks_dir = os.path.join(config.STORAGE_DIR, 'merge_tasks')
-        self.merge_logs_dir = os.path.join(config.STORAGE_DIR, 'merge_logs')
-        self.merge_temp_dir = os.path.join(config.TEMP_DIR, 'merge_temp')
+        self.merge_tasks_dir = os.path.join(get_current_config().STORAGE_DIR, 'merge_tasks')
+        self.merge_logs_dir = os.path.join(get_current_config().STORAGE_DIR, 'merge_logs')
+        self.merge_temp_dir = os.path.join(get_current_config().TEMP_DIR, 'merge_temp')
         
         # Create directories
         os.makedirs(self.tasks_dir, exist_ok=True)

@@ -17,7 +17,11 @@ export default function VideoMerger() {
     setCurrentStep('upload');
   };
   
-  const handleVideoUploaded = () => {
+  const handleVideoUploaded = (updatedTaskData) => {
+    // 更新任务数据（如果有的话）
+    if (updatedTaskData) {
+      setTaskData(updatedTaskData);
+    }
     setCurrentStep('edit-segments');
   };
   
@@ -90,20 +94,20 @@ export default function VideoMerger() {
           
           {currentStep === 'upload' && taskData && (
             <UploadSection 
-              taskUuid={taskData.task_uuid} 
+              taskUuid={taskData.taskId}
               onVideoUploaded={handleVideoUploaded} 
             />
           )}
           
           {currentStep === 'edit-segments' && taskData && (
             <EditSegmentsSection 
-              taskUuid={taskData.task_uuid}
+              taskUuid={taskData.taskId}
               onStartMerge={handleStartMerge}
             />
           )}
           
           {currentStep === 'processing' && taskData && (
-            <ProcessingStatus taskUuid={taskData.task_uuid} />
+            <ProcessingStatus taskUuid={taskData.taskId} />
           )}
         </div>
       </div>

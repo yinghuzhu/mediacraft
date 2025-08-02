@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import Button from '../UI/Button';
 import Alert from '../UI/Alert';
-import { mergeService } from '../../services/api';
+import { videoMergerService } from '../../services/api';
 
 export default function CreateTaskSection({ onTaskCreated }) {
   const { t } = useTranslation('common');
@@ -20,18 +20,20 @@ export default function CreateTaskSection({ onTaskCreated }) {
     setError(null);
     
     try {
-      const response = await mergeService.createTask(
-        taskName || t('videoMerger.createTask.taskNamePlaceholder'),
-        {
-          merge_mode: mergeMode,
-          audio_handling: audioHandling,
-          quality_preset: qualityPreset
-        }
-      );
+      const response = await videoMergerService.createTask(taskName || t('videoMerger.createTask.taskNamePlaceholder'));
       
-      if (response.data && response.data.code === 10000) {
-        onTaskCreated(response.data.data);
+      console.log('Create task response:', response);
+      
+      if (response.data && response.data.success && response.data.data && response.data.data.task_id) {
+        onTaskCreated({
+          taskId: response.data.data.task_id,
+          taskName: taskName || t('videoMerger.createTask.taskNamePlaceholder'),
+          mergeMode,
+          audioHandling,
+          qualityPreset
+        });
       } else {
+        console.error('Create task failed:', response);
         setError(response.data?.message || t('common.error'));
       }
     } catch (err) {

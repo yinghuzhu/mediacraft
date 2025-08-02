@@ -10,108 +10,122 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // 确保Cookie被发送
 });
 
 // 视频水印移除API
 export const watermarkService = {
-  uploadVideo: (file, onProgress) => {
-    const formData = new FormData();
-    formData.append('file', file);
+  uploadVideo: async (file, onProgress) => {
+    try {
+      // 直接创建水印去除任务，包含文件上传
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('task_type', 'watermark_removal');
 
-    return api.post('/api/video/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (progressEvent) => {
-        if (onProgress && progressEvent.total) {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          onProgress(percentCompleted);
-        }
-      },
-    });
+      const response = await api.post('/api/tasks/submit', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (onProgress && progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            onProgress(percentCompleted);
+          }
+        },
+      });
+
+      if (response.data && response.data.task_id) {
+        return {
+          data: {
+            task_id: response.data.task_id,
+            task_uuid: response.data.task_id, // 兼容前端
+            status: response.data.status,
+            message: response.data.message
+          }
+        };
+      } else {
+        throw new Error(response.data?.message || 'Upload failed');
+      }
+    } catch (error) {
+      throw error;
+    }
   },
 
-  getVideoFrames: (taskUuid, count = 12) => {
-    return api.get(`/api/video/task/${taskUuid}/frames`, {
+  getVideoFrames: (taskId, count = 12) => {
+    // 调用后端API获取视频帧
+    return api.get(`/api/tasks/${taskId}/frames`, {
       params: { count },
     });
   },
 
-  selectFrame: (taskUuid, frameNumber) => {
-    return api.post(`/api/video/task/${taskUuid}/select-frame`, {
-      frame_number: frameNumber,
+  selectFrame: (taskId, frameNumber) => {
+    // 这个可以通过更新任务来实现
+    return api.put(`/api/tasks/${taskId}`, {
+      selected_frame: frameNumber,
     });
   },
 
-  selectRegions: (taskUuid, regions) => {
-    return api.post(`/api/video/task/${taskUuid}/select-regions`, {
-      regions,
+  selectRegions: (taskId, regions) => {
+    // 更新任务的区域信息并开始处理
+    return api.put(`/api/tasks/${taskId}`, {
+      regions: regions,
+      action: 'start_processing'
     });
   },
 
-  getTaskStatus: (taskUuid) => {
-    return api.get(`/api/video/task/${taskUuid}/status`);
+  getTaskStatus: (taskId) => {
+    return api.get(`/api/tasks/${taskId}/status`);
   },
 
-  getDownloadUrl: (taskUuid) => {
+  getDownloadUrl: (taskId) => {
     const downloadBaseURL = process.env.NODE_ENV === 'production' ? '' : baseURL;
-    return `${downloadBaseURL}/api/video/task/${taskUuid}/download`;
+    return `${downloadBaseURL}/api/tasks/${taskId}/download`;
   },
 };
 
 // 视频合并API
-export const mergeService = {
-  createTask: (taskName, options = {}) => {
-    return api.post('/api/video/merge/create', {
-      task_name: taskName,
-      ...options,
-    });
-  },
+export const videoMergerService = {
+  // 创建视频合并任务
+  createTask: (taskName) => api.post('/api/tasks/create', {
+    task_type: 'video_merge',
+    task_name: taskName
+  }),
 
-  uploadVideo: (taskUuid, file, onProgress) => {
+  // 上传视频文件
+  uploadVideo: (taskId, file, onProgress) => {
     const formData = new FormData();
-    formData.append('task_uuid', taskUuid);
     formData.append('file', file);
 
-    return api.post('/api/video/merge/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (progressEvent) => {
-        if (onProgress && progressEvent.total) {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          onProgress(percentCompleted);
-        }
+    return api.post(`/api/tasks/${taskId}/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
       },
+      onUploadProgress: onProgress ? (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onProgress(percentCompleted);
+      } : undefined,
     });
   },
 
-  getTask: (taskUuid) => {
-    return api.get(`/api/video/merge/task/${taskUuid}`);
-  },
+  // 获取任务状态
+  getTaskStatus: (taskId) => api.get(`/api/tasks/${taskId}/status`),
 
-  updateItem: (taskUuid, itemId, data) => {
-    return api.put(`/api/video/merge/task/${taskUuid}/items/${itemId}`, data);
-  },
+  // 开始合并
+  startMerge: (taskId, segments) => api.post(`/api/tasks/${taskId}/config`, {
+    segments: segments,
+    action: 'start_processing'
+  }),
 
-  deleteItem: (taskUuid, itemId) => {
-    return api.delete(`/api/video/merge/task/${taskUuid}/items/${itemId}`);
-  },
+  // 下载结果
+  downloadResult: (taskId) => api.get(`/api/tasks/${taskId}/download`, {
+    responseType: 'blob'
+  }),
 
-  reorderItems: (taskUuid, itemOrder) => {
-    return api.post(`/api/video/merge/task/${taskUuid}/reorder`, {
-      item_order: itemOrder,
-    });
-  },
-
-  startMerge: (taskUuid) => {
-    return api.post(`/api/video/merge/task/${taskUuid}/start`);
-  },
-
-  getTaskStatus: (taskUuid) => {
-    return api.get(`/api/video/merge/task/${taskUuid}/status`);
-  },
-
-  getDownloadUrl: (taskUuid) => {
+  getDownloadUrl: (taskId) => {
     const downloadBaseURL = process.env.NODE_ENV === 'production' ? '' : baseURL;
-    return `${downloadBaseURL}/api/video/merge/task/${taskUuid}/download`;
+    return `${downloadBaseURL}/api/tasks/${taskId}/download`;
   },
 };
+
+// 保持向后兼容的mergeService
+export const mergeService = videoMergerService;
 
 export default api;

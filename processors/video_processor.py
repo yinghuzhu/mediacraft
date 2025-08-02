@@ -9,7 +9,7 @@ import tempfile
 import subprocess
 import time
 from typing import List, Dict, Tuple, Optional, Any
-import config
+from config import get_current_config
 from models.task import VideoWatermarkTask
 from models.storage import TaskStorage
 
@@ -18,7 +18,10 @@ class VideoProcessor:
     
     def __init__(self):
         """Initialize processor"""
-        self.temp_dir = config.TEMP_DIR
+        current_config = get_current_config()
+        if not os.path.exists(current_config.TEMP_DIR):
+            raise RuntimeError('TEMP_DIR must be set in config.py')
+        self.temp_dir = current_config.TEMP_DIR
         self.storage = TaskStorage()
     
     def extract_video_info(self, video_path: str) -> Dict[str, Any]:

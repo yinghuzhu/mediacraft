@@ -6,7 +6,9 @@
   "nav": {
     "home": "首页",
     "watermarkRemover": "视频水印去除",
-    "videoMerger": "视频合并"
+    "videoMerger": "视频合并",
+    "my": "我的",
+    "myTasks": "我的任务"
   },
   "home": {
     "title": "专业视频编辑工具",
@@ -37,7 +39,8 @@
     "edit": "编辑",
     "start": "开始",
     "back": "返回",
-    "next": "下一步"
+    "next": "下一步",
+    "unknown": "未知"
   },
   "watermarkRemover": {
     "title": "视频水印去除",
@@ -74,7 +77,8 @@
       "completed": "水印去除完成！",
       "failed": "水印去除失败",
       "unknown": "未知状态",
-      "download": "下载视频"
+      "download": "下载视频",
+      "taskSubmitted": "任务已提交成功！正在跳转到任务列表..."
     },
     "errors": {
       "unsupportedFormat": "不支持的视频格式。请上传MP4、MOV、AVI或MKV文件。",
@@ -138,5 +142,51 @@
       "invalidTimeSegment": "无效的时间段。开始时间必须小于结束时间。",
       "startMergeFailed": "启动合并过程失败。请重试。"
     }
+  },
+  "tasks": {
+    "title": "我的任务",
+    "description": "查看和管理您的视频处理任务",
+    "noTasks": "暂无任务",
+    "noTasksDescription": "您还没有创建任何视频处理任务",
+    "taskList": "任务列表",
+    "refresh": "刷新",
+    "taskInfo": "任务信息",
+    "type": "类型",
+    "status": "状态",
+    "progress": "进度",
+    "createdAt": "创建时间",
+    "actions": "操作",
+    "download": "下载",
+    "loading": "加载中...",
+    "loadFailed": "加载失败",
+    "retry": "重试",
+    "removeWatermark": "去除水印",
+    "mergeVideos": "合并视频",
+    "types": {
+      "watermark_removal": "水印去除",
+      "video_merge": "视频合并"
+    },
+    "statuses": {
+      "completed": "已完成",
+      "processing": "处理中",
+      "failed": "失败",
+      "queued": "排队中",
+      "uploaded": "已上传",
+      "frame_selected": "已选择帧"
+    },
+    "taskDetail": "任务详情",
+    "taskId": "任务ID",
+    "basicInfo": "基本信息",
+    "processingStatus": "处理状态",
+    "processingProgress": "处理进度",
+    "currentStatus": "当前状态",
+    "fileSize": "文件大小",
+    "startedAt": "开始时间",
+    "completedAt": "完成时间",
+    "errorInfo": "错误信息",
+    "configInfo": "配置信息",
+    "backToList": "返回任务列表",
+    "refreshStatus": "刷新状态",
+    "taskNotFound": "任务不存在"
   }
 }

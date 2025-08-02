@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import Button from '../UI/Button';
 import { mergeService } from '../../services/api';
 
 export default function ProcessingStatus({ taskUuid }) {
   const { t } = useTranslation('common');
+  const router = useRouter();
   const [status, setStatus] = useState({
     status: 'processing',
     progress_percentage: 0,
@@ -64,6 +66,10 @@ export default function ProcessingStatus({ taskUuid }) {
     const downloadUrl = mergeService.getDownloadUrl(taskUuid);
     window.open(downloadUrl, '_blank');
   };
+
+  const handleViewAllTasks = () => {
+    router.push('/tasks');
+  };
   
   return (
     <div className="card">
@@ -98,12 +104,22 @@ export default function ProcessingStatus({ taskUuid }) {
                 </svg>
               </div>
               <h3 className="text-lg font-medium mb-4">{getStatusText()}</h3>
-              <Button onClick={handleDownload}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                {t('videoMerger.processing.download')}
-              </Button>
+              <div className="space-y-3">
+                <Button onClick={handleDownload}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  {t('videoMerger.processing.download')}
+                </Button>
+                <div>
+                  <button
+                    onClick={handleViewAllTasks}
+                    className="text-primary hover:text-primary-dark transition-colors text-sm"
+                  >
+                    查看所有任务 →
+                  </button>
+                </div>
+              </div>
             </>
           ) : (
             <>
