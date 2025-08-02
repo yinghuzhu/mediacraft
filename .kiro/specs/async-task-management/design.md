@@ -370,31 +370,217 @@ data/
 - [ ] 任务失败有明确错误信息
 - [ ] 系统重启后任务状态可恢复
 
-## 8. 技术实现细节
+## 8. 水印去除功能详细交互流程
 
-### 8.1 会话管理实现
+### 8.1 完整交互序列图
+
+```mermaid
+sequenceDiagram
+    participant User as 用户
+    participant Frontend as 前端
+    participant Backend as 后端
+    participant Storage as 文件存储
+    participant Processor as 视频处理器
+
+    Note over User, Processor: 水印去除完整流程
+
+    %% 1. 上传视频阶段
+    rect rgb(240, 248, 255)
+        Note over User, Processor: 阶段1: 上传视频
+        User->>Frontend: 1. 访问水印去除页面
+        Frontend->>User: 显示上传界面
+        
+        User->>Frontend: 2. 选择并上传视频文件
+        Frontend->>Backend: POST /api/tasks/create (创建任务)
+        Backend->>Storage: 创建任务记录
+        Backend->>Frontend: 返回 task_id
+        
+        Frontend->>Backend: POST /api/tasks/{task_id}/upload (上传文件)
+        Backend->>Storage: 保存视频文件
+        Backend->>Frontend: 返回上传成功
+        Frontend->>User: 显示上传成功，进入帧选择
+    end
+
+    %% 2. 帧选择阶段
+    rect rgb(240, 255, 240)
+        Note over User, Processor: 阶段2: 选择帧
+        Frontend->>Backend: GET /api/tasks/{task_id}/frames (获取视频帧)
+        Backend->>Processor: 使用WatermarkProcessor提取帧
+        Processor->>Backend: 返回帧列表(base64图像)
+        Backend->>Frontend: 返回帧数据
+        Frontend->>User: 显示帧选择界面
+        
+        User->>Frontend: 3. 选择一个帧
+        Frontend->>Backend: PUT /api/tasks/{task_id} (selected_frame: frameNumber)
+        Backend->>Processor: 获取指定帧的完整图像数据
+        Processor->>Backend: 返回帧图像(base64)
+        Backend->>Storage: 保存选中帧信息
+        Backend->>Frontend: 返回 {success: true, frame_data: base64}
+        Frontend->>User: 进入区域选择界面
+    end
+
+    %% 3. 区域选择阶段
+    rect rgb(255, 248, 240)
+        Note over User, Processor: 阶段3: 选择水印区域
+        Frontend->>Frontend: 使用frame_data显示真实帧图像
+        Frontend->>User: 显示可交互的图像canvas
+        
+        User->>Frontend: 4. 在图像上拖拽选择水印区域
+        Frontend->>Frontend: 记录区域坐标
+        User->>Frontend: 5. 点击"去除水印"按钮
+        
+        Frontend->>Backend: PUT /api/tasks/{task_id} (regions: [...], action: 'start_processing')
+        Backend->>Storage: 保存区域信息
+        Backend->>Backend: 将任务加入处理队列
+        Backend->>Frontend: 返回 {success: true, task_id}
+        Frontend->>User: 跳转到任务列表页面
+    end
+
+    %% 4. 后台处理阶段
+    rect rgb(255, 240, 255)
+        Note over User, Processor: 阶段4: 后台处理
+        Backend->>Processor: 异步处理视频(去除水印)
+        Processor->>Storage: 生成处理后的视频文件
+        Backend->>Storage: 更新任务状态为completed
+        
+        User->>Frontend: 6. 查看任务列表
+        Frontend->>Backend: GET /api/user/tasks
+        Backend->>Frontend: 返回任务列表和状态
+        Frontend->>User: 显示任务进度和下载链接
+    end
+```
+
+### 8.2 关键数据流规范
+
+#### 8.2.1 帧选择数据流
+
+**前端 → 后端**：
+```json
+PUT /api/tasks/{task_id}
+{
+  "selected_frame": 11330
+}
+```
+
+**后端 → 前端**：
+```json
+{
+  "success": true,
+  "task_id": "uuid",
+  "selected_frame": 11330,
+  "frame_data": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ...",
+  "status": "frame_selected",
+  "message": "Task updated successfully"
+}
+```
+
+#### 8.2.2 区域选择数据流
+
+**前端 → 后端**：
+```json
+PUT /api/tasks/{task_id}
+{
+  "regions": [
+    {"x": 100, "y": 50, "width": 200, "height": 100}
+  ],
+  "action": "start_processing"
+}
+```
+
+**后端 → 前端**：
+```json
+{
+  "success": true,
+  "task_id": "uuid",
+  "regions": [...],
+  "status": "queued",
+  "message": "Task updated successfully"
+}
+```
+
+### 8.3 组件接口规范
+
+#### 8.3.1 FrameSelector 组件
+
+**Props**：
+- `taskUuid`: string - 任务ID
+- `onFrameSelected`: function - 帧选择回调
+
+**回调数据格式**：
+```javascript
+onFrameSelected({
+  selected_frame: 11330,
+  frame_number: 11330,
+  frame_data: "data:image/jpeg;base64,..."
+})
+```
+
+#### 8.3.2 RegionSelector 组件
+
+**Props**：
+- `taskUuid`: string - 任务ID
+- `frameData`: object - 帧数据
+- `onRegionsSelected`: function - 区域选择回调
+
+**frameData 格式**：
+```javascript
+{
+  selected_frame: 11330,
+  frame_number: 11330,
+  frame_data: "data:image/jpeg;base64,..."
+}
+```
+
+### 8.4 当前问题分析与修复方案
+
+#### 8.4.1 问题：RegionSelector 不显示真实帧图像
+
+**根本原因**：
+1. 后端 `PUT /api/tasks/{task_id}` 在处理 `selected_frame` 时没有正确返回 `frame_data`
+2. 前端 `RegionSelector` 没有正确使用 `frameData.frame_data`
+
+**修复方案**：
+1. 确保后端在选择帧时调用 `WatermarkProcessor.get_frame_at_index()` 获取完整帧图像
+2. 将帧图像转换为base64格式并在响应中返回
+3. 前端正确处理和显示 `frame_data`
+
+**数据流验证点**：
+```
+FrameSelector.handleConfirmSelection() 
+→ PUT /api/tasks/{task_id} {selected_frame: frameNumber}
+→ 后端调用 WatermarkProcessor.get_frame_at_index(frameNumber)
+→ 返回 {success: true, frame_data: "data:image/jpeg;base64,..."}
+→ onFrameSelected({frame_data: response.data.frame_data})
+→ RegionSelector 接收 frameData.frame_data
+→ 创建 Image 对象并设置 src = frameData.frame_data
+→ 在 canvas 上渲染真实图像
+```
+
+## 9. 技术实现细节
+
+### 9.1 会话管理实现
 - 使用Cookie存储session_id
 - 基于JSON文件的会话持久化
 - 自动过期清理机制
 
-### 8.2 异步任务队列实现
+### 9.2 异步任务队列实现
 - 基于Python内置queue的轻量级实现
 - ThreadPoolExecutor处理并发任务
 - 任务状态实时更新机制
 
-### 8.3 数据存储实现
+### 9.3 数据存储实现
 - JSON文件存储任务和会话数据
 - 线程安全的文件读写操作
 - 自动备份和恢复机制
 
-### 8.4 API兼容层实现
+### 9.4 API兼容层实现
 - 保持原有的路由结构
 - 统一的响应格式包装
 - 错误码映射和处理
 
 ---
 
-**设计文档版本**: v1.0  
+**设计文档版本**: v1.1  
 **创建时间**: 2025年1月25日  
-**最后更新**: 2025年1月25日  
+**最后更新**: 2025年7月28日  
 **状态**: 待审核
