@@ -43,6 +43,13 @@ export default function ProcessingStatus({ taskUuid }) {
         // Stop polling if processing is complete or failed
         if (newStatus.status === 'completed' || newStatus.status === 'failed') {
           setIsPolling(false);
+          
+          // Auto-redirect to task detail page after completion
+          if (newStatus.status === 'completed') {
+            setTimeout(() => {
+              router.push(`/tasks/${taskUuid}`);
+            }, 2000); // Show success message for 2 seconds then redirect
+          }
         }
       }
     } catch (err) {
@@ -68,8 +75,8 @@ export default function ProcessingStatus({ taskUuid }) {
     window.open(downloadUrl, '_blank');
   };
 
-  const handleViewAllTasks = () => {
-    router.push('/tasks');
+  const handleViewTaskDetail = () => {
+    router.push(`/tasks/${taskUuid}`);
   };
   
   return (
@@ -110,10 +117,10 @@ export default function ProcessingStatus({ taskUuid }) {
                 </Button>
                 <div>
                   <button
-                    onClick={handleViewAllTasks}
+                    onClick={handleViewTaskDetail}
                     className="text-primary hover:text-primary-dark transition-colors text-sm"
                   >
-                    查看所有任务 →
+                    View Task Details →
                   </button>
                 </div>
               </div>
@@ -131,10 +138,10 @@ export default function ProcessingStatus({ taskUuid }) {
               )}
               <div className="mt-4">
                 <button
-                  onClick={handleViewAllTasks}
+                  onClick={handleViewTaskDetail}
                   className="text-primary hover:text-primary-dark transition-colors text-sm"
                 >
-                  查看所有任务 →
+                  View Task Details →
                 </button>
               </div>
             </>

@@ -42,7 +42,7 @@ def create_task():
         
         # 创建任务记录
         import uuid
-        from datetime import datetime
+        from datetime import datetime, timezone
         
         task_id = str(uuid.uuid4())
         task_data = {
@@ -51,7 +51,7 @@ def create_task():
             'task_type': task_type,
             'status': 'created',
             'progress_percentage': 0,
-            'created_at': datetime.utcnow().isoformat(),
+            'created_at': datetime.now(timezone.utc).isoformat(),
             'started_at': None,
             'completed_at': None,
             'original_filename': None,
@@ -80,7 +80,7 @@ def create_task():
                 'task_type': task_type
             },
             'meta': {
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
                 'version': 'v1',
                 'request_id': str(uuid.uuid4())
             }
@@ -103,6 +103,8 @@ def upload_task_file(task_id):
         
         # 获取任务
         from flask import current_app
+        from datetime import datetime, timezone
+        import uuid
         task = current_app.storage_manager.get_task(task_id)
         
         if not task:
@@ -204,7 +206,7 @@ def upload_task_file(task_id):
                 'file_size': task.get('file_size')
             },
             'meta': {
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
                 'version': 'v1',
                 'request_id': str(uuid.uuid4())
             }
@@ -227,6 +229,8 @@ def configure_task(task_id):
         
         # 获取任务
         from flask import current_app
+        from datetime import datetime, timezone
+        import uuid
         task = current_app.storage_manager.get_task(task_id)
         
         if not task:
@@ -264,7 +268,7 @@ def configure_task(task_id):
                 'config': task.get('task_config')
             },
             'meta': {
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
                 'version': 'v1',
                 'request_id': str(uuid.uuid4())
             }
@@ -458,7 +462,7 @@ def get_task_status(task_id):
             return jsonify({'error': 'Access denied'}), 403
         
         # 返回任务状态 - 使用统一响应格式
-        from datetime import datetime
+        from datetime import datetime, timezone
         import uuid
         
         response_data = {
@@ -485,7 +489,7 @@ def get_task_status(task_id):
             "message": "Success",
             "data": response_data,
             "meta": {
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "version": "v1",
                 "request_id": str(uuid.uuid4())
             }
@@ -766,6 +770,154 @@ def get_task_frames(task_id):
         logger.error(f"Failed to get task frames: {e}")
         return jsonify({
             'error': 'Failed to get video frames',
+            'message': str(e)
+        }), 500
+
+@tasks_bp.route('/<task_id>/thumbnail', methods=['GET'])
+def get_task_thumbnail(task_id):
+    """获取任务视频的缩略图（第一帧）"""
+    try:
+        sid = getattr(g, 'sid', None)
+        if not sid:
+            return jsonify({'error': 'No valid session'}), 401
+        
+        # 获取任务
+        from flask import current_app
+        task = current_app.storage_manager.get_task(task_id)
+        
+        if not task:
+            return jsonify({'error': 'Task not found'}), 404
+        
+        # 验证任务所有权
+        if task.get('sid') != sid:
+            return jsonify({'error': 'Access denied'}), 403
+        
+        # 获取输入文件路径
+        input_file_path = task.get('input_file_path')
+        if not input_file_path or not os.path.exists(input_file_path):
+            return jsonify({'error': 'Video file not found'}), 404
+        
+        # 提取第一帧
+        import cv2
+        import base64
+        from io import BytesIO
+        
+        cap = cv2.VideoCapture(input_file_path)
+        if not cap.isOpened():
+            return jsonify({'error': 'Cannot open video file'}), 500
+        
+        try:
+            # 读取第一帧
+            ret, frame = cap.read()
+            if not ret:
+                return jsonify({'error': 'Cannot read video frame'}), 500
+            
+            # 调整图片大小
+            height, width = frame.shape[:2]
+            if width > 200:
+                scale = 200 / width
+                new_width = 200
+                new_height = int(height * scale)
+                frame = cv2.resize(frame, (new_width, new_height))
+            
+            # 转换为JPEG格式
+            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            
+            # 返回图片数据
+            from flask import Response
+            return Response(
+                buffer.tobytes(),
+                mimetype='image/jpeg',
+                headers={
+                    'Cache-Control': 'public, max-age=3600',
+                    'Content-Disposition': f'inline; filename="thumbnail_{task_id}.jpg"'
+                }
+            )
+            
+        finally:
+            cap.release()
+        
+    except Exception as e:
+        logger.error(f"Failed to get task thumbnail: {e}")
+        return jsonify({
+            'error': 'Failed to get thumbnail',
+            'message': str(e)
+        }), 500
+
+@tasks_bp.route('/<task_id>/files/<int:file_index>/thumbnail', methods=['GET'])
+def get_file_thumbnail(task_id, file_index):
+    """获取任务中特定文件的缩略图（第一帧）"""
+    try:
+        sid = getattr(g, 'sid', None)
+        if not sid:
+            return jsonify({'error': 'No valid session'}), 401
+        
+        # 获取任务
+        from flask import current_app
+        task = current_app.storage_manager.get_task(task_id)
+        
+        if not task:
+            return jsonify({'error': 'Task not found'}), 404
+        
+        # 验证任务所有权
+        if task.get('sid') != sid:
+            return jsonify({'error': 'Access denied'}), 403
+        
+        # 获取文件列表
+        files = task.get('task_config', {}).get('files', [])
+        if file_index < 0 or file_index >= len(files):
+            return jsonify({'error': 'File index out of range'}), 404
+        
+        # 获取文件路径
+        file_info = files[file_index]
+        file_path = file_info.get('path')
+        if not file_path or not os.path.exists(file_path):
+            return jsonify({'error': 'Video file not found'}), 404
+        
+        # 提取第一帧
+        import cv2
+        import base64
+        from io import BytesIO
+        
+        cap = cv2.VideoCapture(file_path)
+        if not cap.isOpened():
+            return jsonify({'error': 'Cannot open video file'}), 500
+        
+        try:
+            # 读取第一帧
+            ret, frame = cap.read()
+            if not ret:
+                return jsonify({'error': 'Cannot read video frame'}), 500
+            
+            # 调整图片大小
+            height, width = frame.shape[:2]
+            if width > 200:
+                scale = 200 / width
+                new_width = 200
+                new_height = int(height * scale)
+                frame = cv2.resize(frame, (new_width, new_height))
+            
+            # 转换为JPEG格式
+            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            
+            # 返回图片数据
+            from flask import Response
+            return Response(
+                buffer.tobytes(),
+                mimetype='image/jpeg',
+                headers={
+                    'Cache-Control': 'public, max-age=3600',
+                    'Content-Disposition': f'inline; filename="thumbnail_{task_id}_{file_index}.jpg"'
+                }
+            )
+            
+        finally:
+            cap.release()
+        
+    except Exception as e:
+        logger.error(f"Failed to get file thumbnail: {e}")
+        return jsonify({
+            'error': 'Failed to get thumbnail',
             'message': str(e)
         }), 500
 

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import Button from '../UI/Button';
 import Alert from '../UI/Alert';
 import { videoMergerService } from '../../services/api';
 
 export default function EditSegmentsSection({ taskUuid, onStartMerge }) {
   const { t } = useTranslation('common');
+  const router = useRouter();
   const [taskData, setTaskData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -175,10 +177,10 @@ export default function EditSegmentsSection({ taskUuid, onStartMerge }) {
         setSuccess(true);
         setError(null);
         
-        // 调用回调，主页面会处理跳转
-        if (onStartMerge) {
-          onStartMerge();
-        }
+        // 直接跳转到任务详情页
+        setTimeout(() => {
+          router.push(`/tasks/${taskUuid}`);
+        }, 1500); // 显示成功消息1.5秒后跳转
       } else {
         console.error('Start merge failed:', response);
         setError(response.data?.message || t('videoMerger.errors.startMergeFailed'));

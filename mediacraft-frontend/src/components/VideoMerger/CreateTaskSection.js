@@ -6,12 +6,19 @@ import { videoMergerService } from '../../services/api';
 
 export default function CreateTaskSection({ onTaskCreated }) {
   const { t } = useTranslation('common');
-  const [taskName, setTaskName] = useState('');
   const [mergeMode, setMergeMode] = useState('concat');
   const [audioHandling, setAudioHandling] = useState('keep_all');
   const [qualityPreset, setQualityPreset] = useState('medium');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Auto-generate task name based on current timestamp
+  const generateTaskName = () => {
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
+    const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, '-'); // HH-MM-SS
+    return `Video Merge ${dateStr} ${timeStr}`;
+  };
   
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,14 +27,15 @@ export default function CreateTaskSection({ onTaskCreated }) {
     setError(null);
     
     try {
-      const response = await videoMergerService.createTask(taskName || t('videoMerger.createTask.taskNamePlaceholder'));
+      const taskName = generateTaskName();
+      const response = await videoMergerService.createTask(taskName);
       
       console.log('Create task response:', response);
       
       if (response.data && response.data.success && response.data.data && response.data.data.task_id) {
         onTaskCreated({
           taskId: response.data.data.task_id,
-          taskName: taskName || t('videoMerger.createTask.taskNamePlaceholder'),
+          taskName: taskName,
           mergeMode,
           audioHandling,
           qualityPreset
@@ -59,17 +67,13 @@ export default function CreateTaskSection({ onTaskCreated }) {
         
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label htmlFor="task-name" className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               {t('videoMerger.createTask.taskName')}
             </label>
-            <input
-              type="text"
-              id="task-name"
-              className="form-control"
-              placeholder={t('videoMerger.createTask.taskNamePlaceholder')}
-              value={taskName}
-              onChange={(e) => setTaskName(e.target.value)}
-            />
+            <div className="form-control bg-gray-50 text-gray-600">
+              {generateTaskName()}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Task name will be automatically generated</p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-4 mb-6">

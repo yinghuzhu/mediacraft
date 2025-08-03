@@ -26,7 +26,10 @@ export default function VideoMerger() {
   };
   
   const handleStartMerge = () => {
-    setCurrentStep('processing');
+    // Redirect to task detail page instead of processing status
+    if (taskData && taskData.taskId) {
+      window.location.href = `/tasks/${taskData.taskId}`;
+    }
   };
   
   const renderStepIndicator = () => {

@@ -61,7 +61,17 @@ export default function TaskDetail() {
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     try {
-      return new Date(dateString).toLocaleString();
+      const date = new Date(dateString);
+      // 使用更详细的本地化选项，自动根据用户浏览器时区显示
+      return date.toLocaleString(undefined, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false // 24小时制，更国际化
+      });
     } catch {
       return dateString;
     }
@@ -72,6 +82,38 @@ export default function TaskDetail() {
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const sanitizeConfig = (config) => {
+    if (!config || typeof config !== 'object') return config;
+    
+    const sanitized = JSON.parse(JSON.stringify(config)); // Deep clone
+    
+    // Remove sensitive information
+    const removeSensitiveData = (obj) => {
+      if (Array.isArray(obj)) {
+        return obj.map(item => removeSensitiveData(item));
+      } else if (obj && typeof obj === 'object') {
+        const cleaned = {};
+        for (const [key, value] of Object.entries(obj)) {
+          // Remove absolute paths and sensitive keys
+          if (key === 'path' || key === 'input_file_path' || key === 'output_file_path') {
+            if (typeof value === 'string' && value.includes('/')) {
+              // Keep only filename
+              cleaned[key] = value.split('/').pop();
+            } else {
+              cleaned[key] = value;
+            }
+          } else {
+            cleaned[key] = removeSensitiveData(value);
+          }
+        }
+        return cleaned;
+      }
+      return obj;
+    };
+    
+    return removeSensitiveData(sanitized);
   };
 
   if (loading) {
@@ -168,13 +210,34 @@ export default function TaskDetail() {
           {/* 任务头部信息 */}
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {task.original_filename || t('common.unknown')}
-                </h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  {t('tasks.taskId')}: {task.task_id || task.task_uuid}
-                </p>
+              <div className="flex items-center space-x-4">
+                {/* Video Thumbnail */}
+                {task.input_file_path && (
+                  <div className="w-24 h-18 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
+                    <img
+                      src={`/api/tasks/${task.task_id || task.task_uuid}/thumbnail`}
+                      alt="Video thumbnail"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className="w-full h-full flex items-center justify-center text-gray-400" style={{ display: 'none' }}>
+                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    {task.original_filename || t('common.unknown')}
+                  </h1>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {t('tasks.taskId')}: {task.task_id || task.task_uuid}
+                  </p>
+                </div>
               </div>
               <div className="flex items-center space-x-4">
                 <TaskStatus status={task.status} />
@@ -264,13 +327,58 @@ export default function TaskDetail() {
               </div>
             </div>
 
+            {/* 视频文件信息（仅对视频合并任务显示） */}
+            {task.task_type === 'video_merge' && task.config && task.config.files && task.config.files.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Video Files</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {task.config.files.map((file, index) => (
+                    <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-start space-x-4">
+                        {/* Video Thumbnail */}
+                        <div className="w-20 h-15 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
+                          <img
+                            src={`/api/tasks/${task.task_id || task.task_uuid}/files/${index}/thumbnail`}
+                            alt={`${file.filename} thumbnail`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                          <div className="w-full h-full flex items-center justify-center text-gray-400" style={{ display: 'none' }}>
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 002 2v8a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        </div>
+                        
+                        {/* File Info */}
+                        <div className="flex-grow min-w-0">
+                          <h4 className="text-sm font-medium text-gray-900 truncate">{file.filename}</h4>
+                          <div className="mt-1 text-xs text-gray-500 space-y-1">
+                            <div>Size: {formatFileSize(file.size)}</div>
+                            <div>Duration: {file.duration ? `${file.duration.toFixed(1)}s` : 'Unknown'}</div>
+                            <div>Resolution: {file.resolution || 'Unknown'}</div>
+                            {file.start_time !== undefined && file.end_time !== undefined && (
+                              <div>Segment: {file.start_time.toFixed(1)}s - {file.end_time.toFixed(1)}s</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* 配置信息 */}
             {task.config && Object.keys(task.config).length > 0 && (
               <div className="mt-8">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">{t('tasks.configInfo')}</h3>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <pre className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {JSON.stringify(task.config, null, 2)}
+                    {JSON.stringify(sanitizeConfig(task.config), null, 2)}
                   </pre>
                 </div>
               </div>
