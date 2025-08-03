@@ -807,10 +807,10 @@ def get_task_thumbnail(task_id):
             return jsonify({'error': 'Cannot open video file'}), 500
         
         try:
-            # 读取第一帧
-            ret, frame = cap.read()
-            if not ret:
-                return jsonify({'error': 'Cannot read video frame'}), 500
+            # 智能提取缩略图：寻找第一个非黑屏帧
+            frame = _extract_smart_thumbnail(cap)
+            if frame is None:
+                return jsonify({'error': 'Cannot extract valid thumbnail'}), 500
             
             # 调整图片大小
             height, width = frame.shape[:2]
@@ -884,10 +884,10 @@ def get_file_thumbnail(task_id, file_index):
             return jsonify({'error': 'Cannot open video file'}), 500
         
         try:
-            # 读取第一帧
-            ret, frame = cap.read()
-            if not ret:
-                return jsonify({'error': 'Cannot read video frame'}), 500
+            # 智能提取缩略图：寻找第一个非黑屏帧
+            frame = _extract_smart_thumbnail(cap)
+            if frame is None:
+                return jsonify({'error': 'Cannot extract valid thumbnail'}), 500
             
             # 调整图片大小
             height, width = frame.shape[:2]
@@ -999,6 +999,94 @@ def _analyze_video_file(file_path: str) -> dict:
     except Exception as e:
         logger.error(f"Failed to analyze video file {file_path}: {e}")
         return {'duration': 0, 'resolution': 'Unknown', 'fps': 0, 'has_audio': False}
+
+def _extract_smart_thumbnail(cap):
+    """智能提取视频缩略图，避免黑屏和空白帧"""
+    try:
+        import cv2
+        import numpy as np
+        
+        # 获取视频信息
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if total_frames <= 0:
+            return None
+        
+        # 定义要尝试的帧位置（百分比）
+        positions = [0.1, 0.2, 0.3, 0.15, 0.25, 0.05, 0.4, 0.5, 0]  # 最后尝试第一帧
+        
+        best_frame = None
+        best_score = 0
+        
+        for pos_ratio in positions:
+            frame_pos = int(total_frames * pos_ratio)
+            if frame_pos >= total_frames:
+                continue
+            
+            # 跳转到指定帧
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_pos)
+            ret, frame = cap.read()
+            
+            if not ret or frame is None:
+                continue
+            
+            # 计算帧的质量分数
+            score = _calculate_frame_quality(frame)
+            
+            # 如果找到高质量帧，直接返回
+            if score > 80:  # 高质量阈值
+                return frame
+            
+            # 记录最佳帧
+            if score > best_score:
+                best_score = score
+                best_frame = frame.copy()
+        
+        return best_frame
+        
+    except Exception as e:
+        logger.error(f"Error in smart thumbnail extraction: {e}")
+        # 如果智能提取失败，尝试返回第一帧
+        try:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ret, frame = cap.read()
+            return frame if ret else None
+        except:
+            return None
+
+def _calculate_frame_quality(frame):
+    """计算帧的质量分数，用于选择最佳缩略图"""
+    try:
+        import cv2
+        import numpy as np
+        
+        # 转换为灰度图
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        
+        # 1. 亮度检查（避免过暗或过亮的帧）
+        mean_brightness = np.mean(gray)
+        brightness_score = 0
+        if 30 <= mean_brightness <= 200:  # 理想亮度范围
+            brightness_score = 40
+        elif 20 <= mean_brightness <= 220:  # 可接受范围
+            brightness_score = 20
+        else:
+            brightness_score = 0
+        
+        # 2. 对比度检查（避免平坦的图像）
+        contrast = np.std(gray)
+        contrast_score = min(contrast / 2, 30)  # 最高30分
+        
+        # 3. 边缘检查（有更多细节的帧更好）
+        edges = cv2.Canny(gray, 50, 150)
+        edge_density = np.sum(edges > 0) / edges.size
+        edge_score = min(edge_density * 100, 30)  # 最高30分
+        
+        total_score = brightness_score + contrast_score + edge_score
+        return total_score
+        
+    except Exception as e:
+        logger.error(f"Error calculating frame quality: {e}")
+        return 0
 
 def _check_audio_stream(file_path: str) -> bool:
     """检查视频是否有音频流"""

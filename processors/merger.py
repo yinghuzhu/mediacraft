@@ -172,7 +172,7 @@ class VideoMerger:
                     needs_cutting = (start_time > 0 or (end_time and end_time < duration))
                     
                     if needs_cutting:
-                        # 使用FFmpeg切割视频片段
+                        # 使用FFmpeg切割视频片段（强制重新编码以避免时间戳问题）
                         cmd = ['ffmpeg', '-y', '-i', file_path]
                         
                         if start_time > 0:
@@ -181,7 +181,18 @@ class VideoMerger:
                         if end_time and end_time > start_time:
                             cmd.extend(['-t', str(end_time - start_time)])
                         
-                        cmd.extend(['-c', 'copy', segment_path])
+                        # 强制重新编码而不是copy，确保时间戳准确
+                        cmd.extend([
+                            '-c:v', 'libx264',
+                            '-preset', 'medium',
+                            '-crf', '23',
+                            '-pix_fmt', 'yuv420p',
+                            '-c:a', 'aac',
+                            '-ar', '44100',
+                            '-ac', '2',
+                            '-b:a', '128k',
+                            segment_path
+                        ])
                         
                         logger.info(f"Cutting segment: {' '.join(cmd)}")
                         
@@ -212,7 +223,7 @@ class VideoMerger:
                     
                     concat_file.close()
                     
-                    # 使用FFmpeg合并片段
+                    # 使用FFmpeg合并片段（参考稳定版本的逻辑）
                     cmd = [
                         'ffmpeg', '-y',
                         '-f', 'concat',
@@ -223,7 +234,10 @@ class VideoMerger:
                         '-crf', '23',
                         '-pix_fmt', 'yuv420p',
                         '-c:a', 'aac',
+                        '-ar', '44100',     # 强制采样率
+                        '-ac', '2',         # 强制立体声
                         '-b:a', '128k',
+                        '-af', 'aresample=async=1000',  # 音频重采样确保同步
                         output_path
                     ]
                     
