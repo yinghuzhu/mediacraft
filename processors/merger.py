@@ -59,8 +59,8 @@ class VideoMerger:
             video_info = self._analyze_videos(input_files)
             progress_callback(20, f"分析完成，目标分辨率: {video_info['width']}x{video_info['height']}")
             
-            # 执行合并
-            self._merge_videos(input_files, output_path, video_info, progress_callback)
+            # 执行合并（传递文件信息而不是路径列表）
+            self._merge_videos(files_data, output_path, video_info, progress_callback)
             
             # 验证输出文件
             if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
@@ -130,10 +130,10 @@ class VideoMerger:
     def _merge_videos(self, input_files: List[str], output_path: str, 
                      video_info: Dict, progress_callback: Callable[[int, str], None]):
         """
-        执行视频合并（参考稳定分支实现，使用FFmpeg保留音频）
+        执行视频合并（支持时间段切割，参考稳定分支实现）
         
         Args:
-            input_files: 输入文件列表
+            input_files: 输入文件列表（实际是files数据）
             output_path: 输出文件路径
             video_info: 视频属性信息
             progress_callback: 进度回调函数
@@ -142,75 +142,126 @@ class VideoMerger:
         import tempfile
         
         try:
-            progress_callback(30, "准备合并文件列表...")
+            progress_callback(30, "准备处理视频片段...")
             
-            # 创建临时文件列表
-            concat_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False)
+            # 创建临时片段文件列表
+            segment_files = []
+            temp_dir = tempfile.mkdtemp()
+            
             try:
-                # 写入文件路径到concat文件
-                for file_path in input_files:
-                    concat_file.write(f"file '{file_path}'\n")
-                
-                concat_file.close()
-                
-                progress_callback(40, "开始使用FFmpeg合并视频...")
-                
-                # 方法1：尝试使用简单的concat方法（参考稳定分支）
-                cmd = [
-                    'ffmpeg', '-y',
-                    '-f', 'concat',
-                    '-safe', '0',
-                    '-i', concat_file.name
-                ]
-                
-                # 视频设置 - 保持简单但一致
-                cmd.extend([
-                    '-c:v', 'libx264',
-                    '-preset', 'medium',
-                    '-crf', '23',  # 良好质量
-                    '-pix_fmt', 'yuv420p'
-                ])
-                
-                # 音频设置 - 保持音频
-                cmd.extend([
-                    '-c:a', 'aac',
-                    '-b:a', '128k'
-                ])
-                
-                cmd.append(output_path)
-                
-                logger.info(f"FFmpeg command: {' '.join(cmd)}")
-                
-                progress_callback(50, "执行FFmpeg合并...")
-                
-                # 执行FFmpeg命令
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=300  # 5分钟超时
-                )
-                
-                if result.returncode != 0:
-                    logger.error(f"FFmpeg failed with return code {result.returncode}")
-                    logger.error(f"FFmpeg stderr: {result.stderr}")
+                # 处理每个视频片段
+                for i, file_info in enumerate(input_files):
+                    file_path = file_info.get('path')
+                    start_time = file_info.get('start_time', 0)
+                    end_time = file_info.get('end_time')
+                    duration = file_info.get('duration', 0)
                     
-                    # 如果第一种方法失败，尝试更简单的方法
-                    progress_callback(60, "尝试备用合并方法...")
-                    return self._merge_videos_fallback(input_files, output_path, progress_callback)
+                    if not file_path or not os.path.exists(file_path):
+                        raise ValueError(f"Video file not found: {file_path}")
+                    
+                    progress_callback(
+                        30 + int((i / len(input_files)) * 40),
+                        f"处理片段 {i+1}/{len(input_files)}: {os.path.basename(file_path)}"
+                    )
+                    
+                    # 创建临时片段文件
+                    segment_filename = f"segment_{i:03d}.mp4"
+                    segment_path = os.path.join(temp_dir, segment_filename)
+                    
+                    # 检查是否需要切割
+                    needs_cutting = (start_time > 0 or (end_time and end_time < duration))
+                    
+                    if needs_cutting:
+                        # 使用FFmpeg切割视频片段
+                        cmd = ['ffmpeg', '-y', '-i', file_path]
+                        
+                        if start_time > 0:
+                            cmd.extend(['-ss', str(start_time)])
+                        
+                        if end_time and end_time > start_time:
+                            cmd.extend(['-t', str(end_time - start_time)])
+                        
+                        cmd.extend(['-c', 'copy', segment_path])
+                        
+                        logger.info(f"Cutting segment: {' '.join(cmd)}")
+                        
+                        result = subprocess.run(
+                            cmd,
+                            capture_output=True,
+                            text=True,
+                            timeout=300
+                        )
+                        
+                        if result.returncode != 0:
+                            logger.error(f"FFmpeg cutting failed: {result.stderr}")
+                            raise ValueError(f"Failed to cut segment {i+1}: {result.stderr}")
+                    else:
+                        # 不需要切割，创建符号链接或复制
+                        import shutil
+                        shutil.copy2(file_path, segment_path)
+                    
+                    segment_files.append(segment_path)
                 
-                progress_callback(90, "FFmpeg合并完成，正在验证...")
+                progress_callback(70, "开始合并视频片段...")
                 
-                # 验证输出文件
-                if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
-                    raise ValueError("Output file is empty or does not exist")
-                
-                logger.info(f"Video merge completed successfully: {output_path}")
+                # 创建concat文件
+                concat_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False)
+                try:
+                    for segment_path in segment_files:
+                        concat_file.write(f"file '{segment_path}'\n")
+                    
+                    concat_file.close()
+                    
+                    # 使用FFmpeg合并片段
+                    cmd = [
+                        'ffmpeg', '-y',
+                        '-f', 'concat',
+                        '-safe', '0',
+                        '-i', concat_file.name,
+                        '-c:v', 'libx264',
+                        '-preset', 'medium',
+                        '-crf', '23',
+                        '-pix_fmt', 'yuv420p',
+                        '-c:a', 'aac',
+                        '-b:a', '128k',
+                        output_path
+                    ]
+                    
+                    logger.info(f"Merging segments: {' '.join(cmd)}")
+                    
+                    progress_callback(80, "执行FFmpeg合并...")
+                    
+                    result = subprocess.run(
+                        cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=600
+                    )
+                    
+                    if result.returncode != 0:
+                        logger.error(f"FFmpeg merge failed: {result.stderr}")
+                        raise ValueError(f"FFmpeg merge failed: {result.stderr}")
+                    
+                    progress_callback(90, "FFmpeg合并完成，正在验证...")
+                    
+                    # 验证输出文件
+                    if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+                        raise ValueError("Output file is empty or does not exist")
+                    
+                    logger.info(f"Video merge completed successfully: {output_path}")
+                    
+                finally:
+                    # 清理concat文件
+                    try:
+                        os.unlink(concat_file.name)
+                    except:
+                        pass
                 
             finally:
-                # 清理临时文件
+                # 清理临时片段文件
+                import shutil
                 try:
-                    os.unlink(concat_file.name)
+                    shutil.rmtree(temp_dir)
                 except:
                     pass
                     

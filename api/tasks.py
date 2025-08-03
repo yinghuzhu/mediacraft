@@ -155,6 +155,9 @@ def upload_task_file(task_id):
             if 'task_config' not in task:
                 task['task_config'] = {}
             
+            # 分析视频信息
+            video_info = _analyze_video_file(file_path)
+            
             # 添加文件信息到任务配置
             if 'files' not in task['task_config']:
                 task['task_config']['files'] = []
@@ -162,7 +165,13 @@ def upload_task_file(task_id):
             task['task_config']['files'].append({
                 'filename': filename,
                 'path': file_path,
-                'size': os.path.getsize(file_path)
+                'size': os.path.getsize(file_path),
+                'duration': video_info.get('duration', 0),
+                'resolution': video_info.get('resolution', 'Unknown'),
+                'fps': video_info.get('fps', 0),
+                'has_audio': video_info.get('has_audio', False),
+                'start_time': 0,
+                'end_time': video_info.get('duration', 0)
             })
             
             # 更新任务状态
@@ -803,5 +812,114 @@ def download_result(task_id):
         logger.error(f"Failed to download result: {e}")
         return jsonify({
             'error': 'Failed to download result',
+            'message': str(e)
+        }), 500
+
+def _analyze_video_file(file_path: str) -> dict:
+    """分析视频文件信息"""
+    try:
+        import cv2
+        import subprocess
+        import json
+        
+        # 使用OpenCV获取基本信息
+        cap = cv2.VideoCapture(file_path)
+        if not cap.isOpened():
+            return {'duration': 0, 'resolution': 'Unknown', 'fps': 0, 'has_audio': False}
+        
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        duration = frame_count / fps if fps > 0 else 0
+        
+        cap.release()
+        
+        # 使用FFprobe检查音频流
+        has_audio = _check_audio_stream(file_path)
+        
+        return {
+            'duration': duration,
+            'resolution': f"{width}x{height}",
+            'fps': fps,
+            'has_audio': has_audio
+        }
+    except Exception as e:
+        logger.error(f"Failed to analyze video file {file_path}: {e}")
+        return {'duration': 0, 'resolution': 'Unknown', 'fps': 0, 'has_audio': False}
+
+def _check_audio_stream(file_path: str) -> bool:
+    """检查视频是否有音频流"""
+    try:
+        import subprocess
+        import json
+        
+        cmd = [
+            'ffprobe', 
+            '-v', 'error', 
+            '-select_streams', 'a:0', 
+            '-show_entries', 'stream=codec_type', 
+            '-of', 'json', 
+            file_path
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        
+        if result.returncode != 0:
+            return False
+        
+        data = json.loads(result.stdout)
+        return 'streams' in data and len(data['streams']) > 0
+    except Exception:
+        return False
+
+@tasks_bp.route('/<task_id>/segments/<int:segment_index>', methods=['PUT'])
+def update_segment_time(task_id, segment_index):
+    """更新视频片段的时间范围"""
+    try:
+        sid = getattr(g, 'sid', None)
+        if not sid:
+            return jsonify({'error': 'No valid session'}), 401
+        
+        # 获取任务
+        from flask import current_app
+        task = current_app.storage_manager.get_task(task_id)
+        
+        if not task:
+            return jsonify({'error': 'Task not found'}), 404
+        
+        # 验证任务所有权
+        if task.get('sid') != sid:
+            return jsonify({'error': 'Access denied'}), 403
+        
+        # 获取请求数据
+        data = request.get_json()
+        start_time = data.get('start_time', 0)
+        end_time = data.get('end_time')
+        
+        # 更新片段时间
+        if 'task_config' in task and 'files' in task['task_config']:
+            files = task['task_config']['files']
+            if 0 <= segment_index < len(files):
+                files[segment_index]['start_time'] = start_time
+                if end_time is not None:
+                    files[segment_index]['end_time'] = end_time
+                
+                # 保存任务
+                current_app.storage_manager.save_task(task_id, task)
+                
+                return jsonify({
+                    'success': True,
+                    'code': 200,
+                    'message': 'Segment time updated successfully',
+                    'data': files[segment_index]
+                })
+        
+        return jsonify({'error': 'Invalid segment index'}), 400
+        
+    except Exception as e:
+        logger.error(f"Failed to update segment time: {e}")
+        return jsonify({
+            'error': 'Failed to update segment time',
             'message': str(e)
         }), 500
