@@ -5,7 +5,7 @@ echo "Creating MediaCraft Release Package v2.0"
 echo "========================================"
 
 # Set version
-VERSION="2.5.4"
+VERSION="2.6.2"
 RELEASE_NAME="mediacraft-${VERSION}"
 
 # Create release directory

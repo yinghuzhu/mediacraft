@@ -97,9 +97,17 @@ class EnhancedConfig:
     
     def _setup_config(self):
         """设置配置"""
+        # 环境检测
+        self.FLASK_ENV = self.env_loader.get_str('FLASK_ENV', 'development')
+        self.IS_PRODUCTION = self.FLASK_ENV == 'production'
+        
         # Flask 配置
         self.SECRET_KEY = self.env_loader.get_str('SECRET_KEY', 'dev-secret-key-change-in-production')
         self.DEBUG = self.env_loader.get_bool('FLASK_DEBUG', False)
+        
+        # 生产环境安全检查
+        if self.IS_PRODUCTION and self.SECRET_KEY == 'dev-secret-key-change-in-production':
+            raise ValueError("Production environment requires a secure SECRET_KEY")
         
         # 服务器配置
         self.HOST = self.env_loader.get_str('HOST', '127.0.0.1')
@@ -124,6 +132,7 @@ class EnhancedConfig:
         self.MAX_CONCURRENT_TASKS = self.env_loader.get_int('MAX_CONCURRENT_TASKS', 3)
         self.MAX_QUEUE_SIZE = self.env_loader.get_int('MAX_QUEUE_SIZE', 50)
         self.TASK_RETENTION_DAYS = self.env_loader.get_int('TASK_RETENTION_DAYS', 7)
+        self.TASK_TIMEOUT_SECONDS = self.env_loader.get_int('TASK_TIMEOUT_SECONDS', 1800)
         
         # 会话配置
         self.SESSION_TIMEOUT = timedelta(days=30)
@@ -156,6 +165,31 @@ class EnhancedConfig:
         
         # 开发工具配置
         self.ENABLE_DEBUG_TOOLBAR = self.env_loader.get_bool('ENABLE_DEBUG_TOOLBAR', False)
+        
+        # 生产环境优化 - 在所有配置加载完成后执行
+        if self.IS_PRODUCTION:
+            self._setup_production_optimizations()
+    
+    def _setup_production_optimizations(self):
+        """设置生产环境优化"""
+        # 强制关闭调试模式
+        self.DEBUG = False
+        self.ENABLE_DEBUG_TOOLBAR = False
+        
+        # 增强安全设置
+        self.SESSION_COOKIE_SECURE = True
+        self.SESSION_COOKIE_HTTPONLY = True
+        self.SESSION_COOKIE_SAMESITE = 'Strict'
+        
+        # 性能优化
+        if self.MAX_CONCURRENT_TASKS < 2:
+            self.MAX_CONCURRENT_TASKS = 2  # 生产环境最少2个并发
+        
+        # 日志级别
+        if self.LOG_LEVEL == 'DEBUG':
+            self.LOG_LEVEL = 'INFO'  # 生产环境不使用DEBUG级别
+        
+        logger.info("Production environment optimizations applied")
     
     def get_flask_config(self) -> dict:
         """获取 Flask 应用配置"""

@@ -48,6 +48,33 @@ class FileStorageManager:
     def _ensure_json_file(self, file_path: str, default_data: Dict):
         """确保JSON文件存在，如果不存在则创建默认内容"""
         if not os.path.exists(file_path):
+            with open(file_path, 'w') as f:
+                json.dump(default_data, f, indent=2)
+    
+    def get_tasks_dir(self) -> str:
+        """获取任务存储目录"""
+        tasks_dir = os.path.join(self.data_dir, "tasks")
+        os.makedirs(tasks_dir, exist_ok=True)
+        return tasks_dir
+    
+    def delete_task(self, task_id: str):
+        """删除任务"""
+        try:
+            with self._lock:
+                # 从任务文件中删除
+                tasks_data = self._load_json(self.tasks_file, {"tasks": {}})
+                if task_id in tasks_data["tasks"]:
+                    del tasks_data["tasks"][task_id]
+                    self._save_json(self.tasks_file, tasks_data)
+                
+                # 删除单独的任务文件（如果存在）
+                task_file = os.path.join(self.get_tasks_dir(), f"{task_id}.json")
+                if os.path.exists(task_file):
+                    os.remove(task_file)
+                    
+        except Exception as e:
+            logger.error(f"Failed to delete task {task_id}: {e}")
+            raise
             try:
                 with open(file_path, 'w', encoding='utf-8') as f:
                     json.dump(default_data, f, ensure_ascii=False, indent=2)
