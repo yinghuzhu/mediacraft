@@ -1,0 +1,340 @@
+#!/bin/bash
+# MediaCraft Installation Script v2.0
+
+set -e
+
+# Default directories
+DEFAULT_INSTALL_DIR="/var/www/mediacraft"
+DEFAULT_DATA_DIR="/var/lib/mediacraft"
+
+# Parse command line arguments
+show_help() {
+    echo "MediaCraft Installation Script v2.0"
+    echo "===================================="
+    echo ""
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  -i, --install-dir DIR    Program installation directory (default: $DEFAULT_INSTALL_DIR)"
+    echo "  -d, --data-dir DIR       Data storage directory (default: $DEFAULT_DATA_DIR)"
+    echo "  -h, --help              Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  $0                                          # Use default directories"
+    echo "  $0 -i /opt/mediacraft -d /data/mediacraft  # Custom directories"
+    echo ""
+}
+
+# Initialize variables with defaults
+INSTALL_DIR="$DEFAULT_INSTALL_DIR"
+DATA_DIR="$DEFAULT_DATA_DIR"
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -i|--install-dir)
+            INSTALL_DIR="$2"
+            shift 2
+            ;;
+        -d|--data-dir)
+            DATA_DIR="$2"
+            shift 2
+            ;;
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            show_help
+            exit 1
+            ;;
+    esac
+done
+
+echo "MediaCraft Installation Script v2.0"
+echo "===================================="
+echo ""
+echo "Installation Configuration:"
+echo "  Program Directory: $INSTALL_DIR"
+echo "  Data Directory: $DATA_DIR"
+echo ""
+
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+  echo "Please run as root"
+  exit 1
+fi
+
+# Confirm installation
+read -p "Continue with installation? (y/N): " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Installation cancelled."
+    exit 0
+fi
+
+# Detect Linux distribution
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    OS=$NAME
+    VER=$VERSION_ID
+else
+    echo "Cannot detect Linux distribution. Assuming Ubuntu/Debian-like system."
+    OS="Ubuntu"
+fi
+
+echo "Detected OS: $OS $VER"
+
+# Install system dependencies
+echo "Installing system dependencies..."
+if [[ "$OS" == *"Ubuntu"* ]] || [[ "$OS" == *"Debian"* ]]; then
+    echo "Installing dependencies using apt..."
+    apt-get update
+    
+    # Install Node.js 18.x
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+    apt-get install -y nodejs
+    
+    # Python and system dependencies
+    apt-get install -y python3 python3-pip python3-venv
+    apt-get install -y libgl1-mesa-glx libglib2.0-0 libsm6 libxrender1 libxext6
+    apt-get install -y ffmpeg
+    apt-get install -y nginx
+    apt-get install -y curl wget
+    
+elif [[ "$OS" == *"CentOS"* ]] || [[ "$OS" == *"Red Hat"* ]] || [[ "$OS" == *"Fedora"* ]] || [[ "$OS" == *"Rocky"* ]] || [[ "$OS" == *"AlmaLinux"* ]]; then
+    echo "Installing dependencies using dnf/yum..."
+    
+    # Install Node.js 18.x
+    curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
+    if command -v dnf &> /dev/null; then
+        dnf install -y nodejs
+        dnf install -y python3 python3-pip
+        dnf install -y mesa-libGL.x86_64 glib2 libSM libXrender libXext
+        dnf install -y nginx
+        dnf install -y epel-release
+        dnf install -y https://download1.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm || true
+        dnf install -y ffmpeg || echo "Warning: FFmpeg installation failed"
+    else
+        yum install -y nodejs
+        yum install -y python3 python3-pip
+        yum install -y mesa-libGL.x86_64 glib2 libSM libXrender libXext
+        yum install -y nginx
+        yum install -y epel-release
+        yum install -y ffmpeg || echo "Warning: FFmpeg installation failed"
+    fi
+else
+    echo "Unsupported distribution: $OS"
+    exit 1
+fi
+
+echo "System dependencies installed successfully"
+
+echo "Installing MediaCraft to $INSTALL_DIR"
+echo "Data directory: $DATA_DIR"
+
+# Create installation directory
+mkdir -p "$INSTALL_DIR"
+if [ -d "$INSTALL_DIR" ] && [ "$(ls -A $INSTALL_DIR)" ]; then
+    echo "Warning: Installation directory is not empty. Existing files will be overwritten."
+    read -p "Continue? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Installation cancelled."
+        exit 0
+    fi
+    rm -rf "$INSTALL_DIR"/*
+fi
+
+# Create data directory (preserve existing data if upgrading)
+mkdir -p "$DATA_DIR"
+mkdir -p "$DATA_DIR/uploads"
+mkdir -p "$DATA_DIR/results"
+mkdir -p "$DATA_DIR/temp"
+mkdir -p "$DATA_DIR/storage"
+mkdir -p "$DATA_DIR/tasks"
+mkdir -p "$DATA_DIR/sessions"
+mkdir -p "$DATA_DIR/logs"
+
+# Create data files if they don't exist
+[ ! -f "$DATA_DIR/config.json" ] && echo '{}' > "$DATA_DIR/config.json"
+[ ! -f "$DATA_DIR/tasks.json" ] && echo '[]' > "$DATA_DIR/tasks.json"
+[ ! -f "$DATA_DIR/sessions.json" ] && echo '{}' > "$DATA_DIR/sessions.json"
+[ ! -f "$DATA_DIR/users.json" ] && echo '{}' > "$DATA_DIR/users.json"
+
+# Copy application files
+cp -r * "$INSTALL_DIR/"
+echo "Copied application files"
+
+# Create symlink from program directory to data directory
+ln -sf "$DATA_DIR" "$INSTALL_DIR/data"
+echo "Created data directory symlink"
+
+# Create production configuration file
+cat > "$INSTALL_DIR/production.conf" << EOF
+# MediaCraft Production Configuration
+DATA_DIR=$DATA_DIR
+UPLOAD_DIR=$DATA_DIR/uploads
+RESULTS_DIR=$DATA_DIR/results
+TEMP_DIR=$DATA_DIR/temp
+STORAGE_DIR=$DATA_DIR/storage
+TASKS_DIR=$DATA_DIR/tasks
+SESSIONS_DIR=$DATA_DIR/sessions
+LOGS_DIR=$DATA_DIR/logs
+
+# Database files
+CONFIG_FILE=$DATA_DIR/config.json
+TASKS_FILE=$DATA_DIR/tasks.json
+SESSIONS_FILE=$DATA_DIR/sessions.json
+USERS_FILE=$DATA_DIR/users.json
+EOF
+echo "Created production configuration"
+
+# Generate production environment file
+echo "Creating production environment configuration..."
+if [ -f "scripts/deployment/.env.production.template" ]; then
+    # Generate a secure secret key
+    SECRET_KEY=$(openssl rand -hex 32 2>/dev/null || python3 -c "import secrets; print(secrets.token_hex(32))")
+    
+    # Create .env.production from template
+    sed "s|DATA_DIR_PLACEHOLDER|$DATA_DIR|g; s|GENERATE_SECURE_SECRET_KEY_HERE|$SECRET_KEY|g" \
+        scripts/deployment/.env.production.template > "$INSTALL_DIR/.env.production"
+    
+    # Set secure permissions
+    chmod 600 "$INSTALL_DIR/.env.production"
+    chown www-data:www-data "$INSTALL_DIR/.env.production"
+    
+    echo "Created production environment file: $INSTALL_DIR/.env.production"
+else
+    echo "Warning: Environment template not found, creating basic .env.production"
+    cat > "$INSTALL_DIR/.env.production" << ENVEOF
+# MediaCraft Production Environment
+FLASK_ENV=production
+FLASK_DEBUG=0
+SECRET_KEY=$(openssl rand -hex 32 2>/dev/null || python3 -c "import secrets; print(secrets.token_hex(32))")
+DATA_DIR=$DATA_DIR
+HOST=127.0.0.1
+PORT=50001
+LOG_LEVEL=INFO
+MAX_CONCURRENT_TASKS=5
+ENVEOF
+    chmod 600 "$INSTALL_DIR/.env.production"
+    chown www-data:www-data "$INSTALL_DIR/.env.production"
+fi
+
+# Create Python virtual environment
+echo "Creating Python virtual environment..."
+cd "$INSTALL_DIR"
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+echo "Python virtual environment created and dependencies installed"
+
+# Install Node.js dependencies for frontend
+echo "Installing Node.js dependencies..."
+cd "$INSTALL_DIR/frontend"
+npm install --production
+echo "Node.js dependencies installed"
+
+# Set permissions
+cd "$INSTALL_DIR"
+chown -R www-data:www-data "$INSTALL_DIR"
+chown -R www-data:www-data "$DATA_DIR"
+chmod -R 755 "$INSTALL_DIR"
+chmod -R 755 "$DATA_DIR"
+echo "Set file permissions"
+
+# Install systemd services
+echo "Installing systemd services..."
+
+# Generate backend service file from template
+sed "s|INSTALL_DIR_PLACEHOLDER|$INSTALL_DIR|g; s|DATA_DIR_PLACEHOLDER|$DATA_DIR|g" \
+    mediacraft-backend.service.template > /etc/systemd/system/mediacraft-backend.service
+
+# Generate frontend service file from template
+sed "s|INSTALL_DIR_PLACEHOLDER|$INSTALL_DIR|g; s|DATA_DIR_PLACEHOLDER|$DATA_DIR|g" \
+    mediacraft-frontend.service.template > /etc/systemd/system/mediacraft-frontend.service
+
+systemctl daemon-reload
+systemctl enable mediacraft-backend.service
+systemctl enable mediacraft-frontend.service
+echo "Systemd services installed and enabled"
+
+# Install Nginx configuration
+echo "Installing Nginx configuration..."
+
+# Generate Nginx configuration from template
+sed "s|INSTALL_DIR_PLACEHOLDER|$INSTALL_DIR|g; s|DATA_DIR_PLACEHOLDER|$DATA_DIR|g" \
+    nginx_mediacraft.conf.template > /etc/nginx/sites-available/mediacraft
+
+ln -sf /etc/nginx/sites-available/mediacraft /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+
+# Test Nginx configuration
+if nginx -t; then
+    echo "Nginx configuration is valid"
+else
+    echo "Warning: Nginx configuration has errors. Please check manually."
+fi
+
+# Create additional necessary directories in data directory
+mkdir -p "$DATA_DIR/merge_tasks"
+mkdir -p "$DATA_DIR/temp/merge_temp"
+chown -R www-data:www-data "$DATA_DIR"
+echo "Created necessary data directories"
+
+# Verify installation
+echo "Verifying installation..."
+
+# Check Node.js
+if command -v node &> /dev/null; then
+    echo "✓ Node.js $(node --version) is installed"
+else
+    echo "✗ Node.js installation failed"
+fi
+
+# Check FFmpeg
+if command -v ffmpeg &> /dev/null; then
+    echo "✓ FFmpeg is installed and accessible"
+else
+    echo "✗ FFmpeg installation failed"
+fi
+
+# Check Python dependencies
+if "$INSTALL_DIR/venv/bin/python" -c "import cv2, numpy, flask, flask_cors" 2>/dev/null; then
+    echo "✓ Python dependencies are installed"
+else
+    echo "✗ Some Python dependencies are missing"
+fi
+
+echo ""
+echo "MediaCraft installation completed!"
+echo ""
+echo "Configuration:"
+echo "  Program Directory: $INSTALL_DIR"
+echo "  Data Directory: $DATA_DIR"
+echo ""
+echo "Next steps:"
+echo "1. Start the MediaCraft services:"
+echo "   systemctl start mediacraft-backend"
+echo "   systemctl start mediacraft-frontend"
+echo ""
+echo "2. Check the service status:"
+echo "   systemctl status mediacraft-backend"
+echo "   systemctl status mediacraft-frontend"
+echo ""
+echo "3. Restart Nginx:"
+echo "   systemctl restart nginx"
+echo ""
+echo "4. (Optional) Configure SSL certificates using Let's Encrypt:"
+echo "   certbot --nginx -d your-domain.com"
+echo ""
+echo "MediaCraft should now be accessible at:"
+echo "- HTTP: http://your-domain.com"
+echo "- HTTPS: https://your-domain.com (if SSL is configured)"
+echo ""
+echo "Services:"
+echo "- Frontend (Next.js): http://localhost:3000"
+echo "- Backend (Flask): http://localhost:50001"

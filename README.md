@@ -12,21 +12,25 @@ A professional web application for video processing tasks including watermark re
 - **SEO Optimized**: Server-side rendering for better search engine visibility
 
 ### Video Watermark Removal
-- 🎬 **Multi-format Support**: Handles MP4, MOV, AVI, MKV video formats
+- 🎬 **Multi-format Support**: Handles MP4, MOV, AVI, MKV video formats (max 500MB)
 - 🖼️ **Smart Frame Selection**: Choose the frame that best shows the watermark
 - 🎯 **Precise Region Selection**: Mark multiple watermark regions with mouse drag
 - 🤖 **AI-powered Processing**: Uses advanced image inpainting algorithms
 - 🔊 **Audio Preservation**: Keeps the original audio track intact
-- 📊 **Real-time Progress**: Shows processing status and progress
+- 📊 **Real-time Progress**: Shows processing status and progress percentage
 - 💾 **Easy Download**: Get your watermark-free video with one click
+- 🔄 **Auto-redirect**: Automatically redirects to task detail page after completion
 
 ### Video Merger
-- 🎞️ **Multi-video Merging**: Combine multiple videos into one seamless file
-- ⏱️ **Precise Time Control**: Select specific segments from each video
-- 🔄 **Drag & Drop Ordering**: Easily rearrange video sequence
+- 🎞️ **Multi-video Merging**: Combine multiple videos into one seamless file (up to 10 videos)
+- ⏱️ **Precise Time Control**: Select specific start/end times for each video segment
+- 📊 **Real-time Duration**: Shows total merged video duration as you edit
 - 🎵 **Audio Options**: Keep all audio, first video only, or remove audio
-- 📱 **Mobile Friendly**: Optimized for touch devices
-- ⚡ **High Performance**: Efficient FFmpeg-based processing
+- 📱 **Mobile Friendly**: Optimized for touch devices with responsive design
+- ⚡ **High Performance**: Efficient FFmpeg-based processing with re-encoding
+- 🖼️ **Video Thumbnails**: Smart thumbnail extraction avoiding black frames
+- 🌍 **Global Timezone**: Automatic local time display for users worldwide
+- 🏷️ **Auto-naming**: Automatic task name generation with timestamps
 
 ## Installation
 
@@ -97,14 +101,16 @@ sudo ./install.sh
 2. **Select Frame**: Choose a frame that clearly shows the watermark
 3. **Mark Watermarks**: Draw rectangles around watermark regions
 4. **Process Video**: Start processing and wait for completion
-5. **Download**: Get your watermark-free video
+5. **Auto-redirect**: Automatically redirected to task detail page
+6. **Download**: Get your watermark-free video from task details
 
 ### Video Merger
-1. **Create Task**: Set task name and merge preferences
+1. **Create Task**: Task name is automatically generated with timestamp
 2. **Upload Videos**: Add multiple video files (up to 10 videos, 500MB each)
-3. **Edit Segments**: Set start/end times for each video segment
-4. **Arrange Order**: Drag and drop to reorder videos
-5. **Merge**: Start processing and download the merged result
+3. **Edit Segments**: Set precise start/end times for each video segment
+4. **Preview**: View video thumbnails and real-time total duration
+5. **Merge**: Start processing and get redirected to task detail page
+6. **Download**: Get your merged video from task details
 
 ## Configuration
 
@@ -179,25 +185,25 @@ mediacraft/
 
 ## API Endpoints
 
+### Task Management
+- `POST /api/tasks/create` - Create new task (watermark removal or video merge)
+- `GET /api/tasks/{task_id}/status` - Get task status and details
+- `DELETE /api/tasks/{task_id}` - Cancel/delete task
+- `GET /api/user/tasks` - List user's tasks with pagination
+- `GET /api/tasks/{task_id}/download` - Download processed result
+
+### File Operations
+- `POST /api/tasks/{task_id}/upload` - Upload video file to task
+- `GET /api/tasks/{task_id}/thumbnail` - Get video thumbnail (smart extraction)
+- `GET /api/tasks/{task_id}/files/{file_index}/thumbnail` - Get specific file thumbnail
+
 ### Watermark Removal
-- `POST /api/video/upload` - Upload video file
-- `GET /api/video/task/{uuid}/frames` - Get video frames
-- `POST /api/video/task/{uuid}/select-frame` - Select frame
-- `POST /api/video/task/{uuid}/select-regions` - Submit watermark regions
-- `GET /api/video/task/{uuid}/status` - Check processing status
-- `GET /api/video/task/{uuid}/download` - Download processed video
+- `GET /api/tasks/{task_id}/frames` - Get video frames for selection
+- `PUT /api/tasks/{task_id}` - Update task (select frame, regions, start processing)
 
 ### Video Merger
-- `POST /api/video/merge/create` - Create merge task
-- `GET /api/video/merge/task/{uuid}` - Get task details
-- `DELETE /api/video/merge/task/{uuid}` - Delete task
-- `POST /api/video/merge/upload` - Upload video for merging
-- `PUT /api/video/merge/task/{uuid}/items/{item_id}` - Update video item
-- `DELETE /api/video/merge/task/{uuid}/items/{item_id}` - Delete video item
-- `POST /api/video/merge/task/{uuid}/reorder` - Reorder videos
-- `POST /api/video/merge/task/{uuid}/start` - Start merge processing
-- `GET /api/video/merge/task/{uuid}/status` - Check merge status
-- `GET /api/video/merge/task/{uuid}/download` - Download merged video
+- `POST /api/tasks/{task_id}/config` - Configure and start merge processing
+- `PUT /api/tasks/{task_id}/segments/{segment_index}` - Update video segment time range
 
 ## Requirements
 

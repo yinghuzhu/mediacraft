@@ -16,8 +16,12 @@ This is the Next.js frontend for MediaCraft, a professional video processing web
 - **Localized Content**: All UI elements and messages translated
 
 ### 🎬 Video Processing Features
-- **Watermark Removal**: AI-powered watermark detection and removal
-- **Video Merging**: Combine multiple videos with precise control
+- **Watermark Removal**: AI-powered watermark detection and removal with auto-redirect
+- **Video Merging**: Combine multiple videos with precise time segment control
+- **Smart Thumbnails**: Intelligent thumbnail extraction avoiding black frames
+- **Real-time Duration**: Live calculation of total merged video duration
+- **Global Timezone**: Automatic local time display for international users
+- **Auto-naming**: Automatic task name generation with timestamps
 - **Drag & Drop Interface**: Intuitive file upload and management
 - **Progress Tracking**: Real-time processing status updates
 
@@ -132,21 +136,25 @@ The frontend communicates with the Flask backend API through a centralized servi
 
 ### API Services (`/src/services/api.js`)
 ```javascript
+// Task management services
+taskService.createTask(taskType)
+taskService.getTaskStatus(taskId)
+taskService.getUserTasks(page, limit)
+taskService.uploadFile(taskId, file, onProgress)
+taskService.getThumbnail(taskId)
+taskService.getFileThumbnail(taskId, fileIndex)
+
 // Watermark removal services
-watermarkService.uploadVideo(file, onProgress)
-watermarkService.getVideoFrames(taskUuid)
-watermarkService.selectFrame(taskUuid, frameNumber)
-watermarkService.selectRegions(taskUuid, regions)
-watermarkService.getTaskStatus(taskUuid)
-watermarkService.getDownloadUrl(taskUuid)
+watermarkService.getTaskFrames(taskId, count)
+watermarkService.updateTask(taskId, data)
+watermarkService.getDownloadUrl(taskId)
 
 // Video merger services
-mergeService.createTask(taskName, options)
-mergeService.uploadVideo(taskUuid, file, onProgress)
-mergeService.getTask(taskUuid)
-mergeService.startMerge(taskUuid)
-mergeService.getTaskStatus(taskUuid)
-mergeService.getDownloadUrl(taskUuid)
+videoMergerService.createTask(taskName)
+videoMergerService.configureTask(taskId, config)
+videoMergerService.updateSegment(taskId, segmentIndex, timeRange)
+videoMergerService.startMerge(taskId, segments)
+videoMergerService.getTaskStatus(taskId)
 ```
 
 ## Performance Optimizations
