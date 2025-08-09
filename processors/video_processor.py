@@ -3,12 +3,17 @@ Video processor for watermark removal
 """
 
 import os
+import sys
 import cv2
 import numpy as np
 import tempfile
 import subprocess
 import time
 from typing import List, Dict, Tuple, Optional, Any
+
+# 确保可以导入 models 和 config 模块
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from config import get_current_config
 from models.task import VideoWatermarkTask
 from models.storage import TaskStorage

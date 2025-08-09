@@ -3,9 +3,13 @@
 基于会话ID的用户数据管理
 """
 import os
+import sys
 import logging
 from typing import Optional, Dict, List
 from datetime import datetime, timedelta
+
+# 确保可以导入 models 模块
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from models.user import User
 

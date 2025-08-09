@@ -3,12 +3,17 @@ Video merger processor for MediaCraft
 """
 
 import os
+import sys
 import subprocess
 import tempfile
 import time
 import json
 from typing import List, Dict, Tuple, Optional, Any
 import cv2
+
+# 确保可以导入 models 和 config 模块
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import config
 from models.merge_task import VideoMergeTask
 from models.merge_video_item import MergeVideoItem

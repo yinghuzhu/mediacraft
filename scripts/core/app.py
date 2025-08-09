@@ -5,13 +5,14 @@ Flask主应用程序
 import os
 import sys
 import logging
+
+# 添加当前目录到Python路径 - 必须在其他导入之前
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from flask import Flask, jsonify, request, g
 from flask_cors import CORS
 
-from config import get_current_config
-
-# 添加当前目录到Python路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from core.env_config import get_config
 
 # 导入核心组件
 from core.storage import FileStorageManager
@@ -41,9 +42,14 @@ def create_app():
     """应用工厂函数"""
     app = Flask(__name__)
 
-    configuation = get_current_config()
-
-    app.config.from_object(configuation)
+    config = get_config()
+    
+    # 使用新的配置系统
+    app.config.update(config.get_flask_config())
+    
+    # 添加其他配置
+    app.config['DATA_DIR'] = config.DATA_DIR
+    app.config['CORS_ORIGINS'] = config.CORS_ORIGINS
     
     # 初始化CORS
     CORS(app, 
@@ -53,13 +59,13 @@ def create_app():
          supports_credentials=True)
     
     # 初始化核心组件
-    storage_manager = FileStorageManager(app.config['DATA_DIR'])
+    storage_manager = FileStorageManager(config.DATA_DIR)
     session_manager = SessionManager(storage_manager)
     config_manager = ConfigManager(storage_manager, app.config)
     user_manager = UserManager(storage_manager)
     task_queue_manager = TaskQueueManager(
         storage_manager, 
-        max_concurrent=config_manager.get('max_concurrent_tasks', 3)
+        max_concurrent=config.MAX_CONCURRENT_TASKS
     )
     
     # 注册任务执行器
@@ -228,10 +234,11 @@ if __name__ == '__main__':
     
     try:
         # 启动应用
+        config = get_config()
         app.run(
-            host='0.0.0.0',
-            port=int(os.environ.get('PORT', 50001)),
-            debug=app.config.get('DEBUG', False)
+            host=config.HOST,
+            port=config.PORT,
+            debug=config.DEBUG
         )
     except KeyboardInterrupt:
         logger.info("Received shutdown signal")
