@@ -1,0 +1,193 @@
+{
+  "site": {
+    "title": "MediaCraft",
+    "description": "Professional video editing tools for watermark removal and video merging"
+  },
+  "nav": {
+    "home": "Home",
+    "watermarkRemover": "Video Watermark Remover",
+    "videoMerger": "Video Merger",
+    "my": "My",
+    "myTasks": "My Tasks"
+  },
+  "home": {
+    "title": "Professional Video Editing Tools",
+    "description": "MediaCraft offers intelligent video editing with watermark removal and video merging capabilities.",
+    "heading": "Transform Your Videos with MediaCraft"
+  },
+  "features": {
+    "watermark": {
+      "title": "Video Watermark Remover",
+      "description": "Remove unwanted watermarks from your videos with our intelligent watermark removal tool.",
+      "cta": "Remove Watermarks"
+    },
+    "merger": {
+      "title": "Video Merger",
+      "description": "Combine multiple videos into one seamless file with precise time segment control.",
+      "cta": "Merge Videos"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success!",
+    "upload": "Upload",
+    "download": "Download",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "start": "Start",
+    "back": "Back",
+    "next": "Next",
+    "unknown": "Unknown"
+  },
+  "watermarkRemover": {
+    "title": "Video Watermark Remover",
+    "description": "Remove unwanted watermarks from your videos in three simple steps.",
+    "steps": {
+      "upload": "Upload",
+      "frameSelect": "Select Frame",
+      "regionSelect": "Mark Watermark",
+      "processing": "Processing"
+    },
+    "upload": {
+      "title": "Upload Video",
+      "dragDrop": "Drag and drop your video here, or click to browse",
+      "supportedFormats": "Supports MP4, MOV, AVI, and MKV formats (max 500MB)"
+    },
+    "frameSelector": {
+      "title": "Select Frame with Watermark",
+      "instruction": "Choose a frame where the watermark is clearly visible:",
+      "loading": "Loading video frames...",
+      "confirm": "Confirm Selection"
+    },
+    "regionSelector": {
+      "title": "Select Watermark Regions",
+      "instruction": "Click and drag to select the watermark regions you want to remove:",
+      "selectedRegions": "Selected Regions",
+      "noRegionsSelected": "No regions selected yet. Click and drag on the image to select watermark areas.",
+      "noRegions": "Please select at least one watermark region",
+      "region": "Region",
+      "submit": "Remove Watermarks"
+    },
+    "processing": {
+      "title": "Processing Video",
+      "inProgress": "Removing watermarks from your video...",
+      "completed": "Watermark removal completed!",
+      "failed": "Watermark removal failed",
+      "unknown": "Unknown status",
+      "download": "Download Video",
+      "taskSubmitted": "Task submitted successfully! Redirecting to task list..."
+    },
+    "errors": {
+      "unsupportedFormat": "Unsupported video format. Please upload MP4, MOV, AVI, or MKV files.",
+      "fileTooLarge": "File size exceeds the 500MB limit.",
+      "uploadFailed": "Failed to upload video. Please try again.",
+      "framesLoadFailed": "Failed to load video frames. Please try again.",
+      "frameSelectFailed": "Failed to select frame. Please try again.",
+      "regionsSubmitFailed": "Failed to submit watermark regions. Please try again."
+    }
+  },
+  "videoMerger": {
+    "title": "Video Merger",
+    "description": "Combine multiple videos into one seamless file with precise time segment control.",
+    "steps": {
+      "createTask": "Create Task",
+      "uploadVideos": "Upload Videos",
+      "editSegments": "Edit Segments",
+      "processing": "Processing"
+    },
+    "createTask": {
+      "title": "Create Merge Task",
+      "taskName": "Task Name",
+      "taskNamePlaceholder": "My Video Compilation",
+      "mergeMode": "Merge Mode",
+      "audioHandling": "Audio Handling",
+      "qualityPreset": "Quality Preset",
+      "create": "Create Task"
+    },
+    "upload": {
+      "title": "Upload Videos",
+      "dragDrop": "Drag and drop videos here, or click to browse",
+      "supportedFormats": "Supports MP4, MOV, AVI, and MKV formats (max 500MB)",
+      "maxVideos": "Maximum 10 videos"
+    },
+    "editSegments": {
+      "title": "Edit Video Segments",
+      "startTime": "Start Time (s)",
+      "endTime": "End Time (s)",
+      "update": "Update",
+      "reset": "Reset",
+      "duration": "Duration",
+      "resolution": "Resolution",
+      "segment": "Segment",
+      "totalDuration": "Total Duration",
+      "totalVideos": "Total Videos",
+      "startMerging": "Start Merging"
+    },
+    "processing": {
+      "title": "Processing Videos",
+      "inProgress": "Merging your videos...",
+      "completed": "Video merge completed!",
+      "failed": "Video merge failed",
+      "unknown": "Unknown status",
+      "download": "Download Merged Video",
+      "taskSubmitted": "Merge task submitted successfully! Redirecting to task list..."
+    },
+    "errors": {
+      "unsupportedFormat": "Unsupported video format. Please upload MP4, MOV, AVI, or MKV files.",
+      "fileTooLarge": "File size exceeds the 500MB limit.",
+      "maxVideosReached": "Maximum number of videos (10) reached.",
+      "uploadFailed": "Failed to upload video. Please try again.",
+      "invalidTimeSegment": "Invalid time segment. Start time must be less than end time.",
+      "startMergeFailed": "Failed to start merge process. Please try again."
+    }
+  },
+  "tasks": {
+    "title": "My Tasks",
+    "description": "View and manage your video processing tasks",
+    "noTasks": "No tasks yet",
+    "noTasksDescription": "You haven't created any video processing tasks yet",
+    "taskList": "Task List",
+    "refresh": "Refresh",
+    "taskInfo": "Task Info",
+    "type": "Type",
+    "status": "Status",
+    "progress": "Progress",
+    "createdAt": "Created",
+    "actions": "Actions",
+    "download": "Download",
+    "loading": "Loading...",
+    "loadFailed": "Load Failed",
+    "retry": "Retry",
+    "removeWatermark": "Remove Watermark",
+    "mergeVideos": "Merge Videos",
+    "types": {
+      "watermark_removal": "Watermark Removal",
+      "video_merge": "Video Merge"
+    },
+    "statuses": {
+      "completed": "Completed",
+      "processing": "Processing",
+      "failed": "Failed",
+      "queued": "Queued",
+      "uploaded": "Uploaded",
+      "frame_selected": "Frame Selected"
+    },
+    "taskDetail": "Task Detail",
+    "taskId": "Task ID",
+    "basicInfo": "Basic Information",
+    "processingStatus": "Processing Status",
+    "processingProgress": "Processing Progress",
+    "currentStatus": "Current Status",
+    "fileSize": "File Size",
+    "startedAt": "Started At",
+    "completedAt": "Completed At",
+    "errorInfo": "Error Information",
+    "configInfo": "Configuration",
+    "backToList": "Back to Task List",
+    "refreshStatus": "Refresh Status",
+    "taskNotFound": "Task Not Found"
+  }
+}
