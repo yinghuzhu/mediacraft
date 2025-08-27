@@ -39,3 +39,80 @@ next-env.d.ts
 
 # OS
 Thumbs.db
+
+# Python bytecode (for mixed projects)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+env.bak/
+venv.bak/
+
+# Distribution / packaging
+dist/
+*.egg-info/
+*.egg
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~
+
+# Storage and user data
+storage/tasks/
+storage/regions/
+storage/logs/
+logs/
+
+# IDE specific files
+*.sublime-workspace
+*.sublime-project
+
+# Release files
+releases/
+
+# Environment variables
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Media files
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.mp3
+*.wav
+*.flac
+*.ogg
+
+# Certificates and keys
+*.key
+*.crt
+*.cer
+*.der
+*.priv
+
+# Logs
+*.log
+log/
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Configuration overrides
+config_local.py
+config_dev.py
