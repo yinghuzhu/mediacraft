@@ -3,8 +3,9 @@ import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import Layout from '../components/Layout/Layout';
 import TaskList from '../components/Tasks/TaskList';
+import withAuth from '../components/Auth/withAuth';
 
-export default function MyTasks() {
+function MyTasks() {
   const { t } = useTranslation('common');
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -93,6 +94,9 @@ export default function MyTasks() {
     </Layout>
   );
 }
+
+// 使用 withAuth HOC 包装组件
+export default withAuth(MyTasks);
 
 export async function getStaticProps({ locale }) {
   return {

@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
+import { useAuth } from '../../contexts/AuthContext';
 import Button from '../UI/Button';
 import Alert from '../UI/Alert';
+import LoginModal from '../Auth/LoginModal';
 import { watermarkService } from '../../services/api';
 
 export default function UploadSection({ onUploadSuccess }) {
   const { t } = useTranslation('common');
+  const { isAuthenticated } = useAuth();
   const [file, setFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   
   const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
   const maxFileSize = 500 * 1024 * 1024; // 500MB
@@ -61,6 +65,12 @@ export default function UploadSection({ onUploadSuccess }) {
   
   const handleUpload = async () => {
     if (!file) return;
+    
+    // 检查用户是否已登录
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
     
     setIsUploading(true);
     setError(null);
@@ -180,7 +190,28 @@ export default function UploadSection({ onUploadSuccess }) {
             </div>
           </div>
         )}
+
+        {/* 登录提示 */}
+        {!isAuthenticated && (
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-blue-700 text-sm">
+                请先登录后再上传视频文件
+              </p>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* 登录模态框 */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLoginSuccess={() => setShowLoginModal(false)}
+      />
     </div>
   );
 }

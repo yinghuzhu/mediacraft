@@ -6,8 +6,9 @@ import UploadSection from '../components/WatermarkRemover/UploadSection';
 import FrameSelector from '../components/WatermarkRemover/FrameSelector';
 import RegionSelector from '../components/WatermarkRemover/RegionSelector';
 import ProcessingStatus from '../components/WatermarkRemover/ProcessingStatus';
+import withAuth from '../components/Auth/withAuth';
 
-export default function WatermarkRemover() {
+function WatermarkRemover() {
   const { t } = useTranslation('common');
   const [currentStep, setCurrentStep] = useState('upload');
   const [taskData, setTaskData] = useState(null);
@@ -111,6 +112,9 @@ export default function WatermarkRemover() {
     </Layout>
   );
 }
+
+// 使用 withAuth HOC 包装组件
+export default withAuth(WatermarkRemover);
 
 export async function getStaticProps({ locale }) {
   return {

@@ -1,5 +1,6 @@
 import { appWithTranslation } from 'next-i18next';
 import Head from 'next/head';
+import { AuthProvider } from '../contexts/AuthContext';
 import '../styles/globals.css';
 
 function MyApp({ Component, pageProps }) {
@@ -9,7 +10,9 @@ function MyApp({ Component, pageProps }) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="theme-color" content="#0d6efd" />
       </Head>
-      <Component {...pageProps} />
+      <AuthProvider>
+        <Component {...pageProps} />
+      </AuthProvider>
     </>
   );
 }

@@ -6,8 +6,9 @@ import CreateTaskSection from '../components/VideoMerger/CreateTaskSection';
 import UploadSection from '../components/VideoMerger/UploadSection';
 import EditSegmentsSection from '../components/VideoMerger/EditSegmentsSection';
 import ProcessingStatus from '../components/VideoMerger/ProcessingStatus';
+import withAuth from '../components/Auth/withAuth';
 
-export default function VideoMerger() {
+function VideoMerger() {
   const { t } = useTranslation('common');
   const [currentStep, setCurrentStep] = useState('create-task');
   const [taskData, setTaskData] = useState(null);
@@ -117,6 +118,9 @@ export default function VideoMerger() {
     </Layout>
   );
 }
+
+// 使用 withAuth HOC 包装组件
+export default withAuth(VideoMerger);
 
 export async function getStaticProps({ locale }) {
   return {

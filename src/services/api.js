@@ -11,6 +11,107 @@ const api = axios.create({
   withCredentials: true, // 确保Cookie被发送
 });
 
+// 会话初始化标志
+let sessionInitialized = false;
+
+// 初始化会话的函数
+const initializeSession = async () => {
+  if (sessionInitialized) return;
+  
+  try {
+    const response = await api.get('/api/session/init', {
+      timeout: 5000, // 5秒超时
+    });
+    sessionInitialized = true;
+    console.log('Session initialized successfully');
+  } catch (error) {
+    console.log('Session initialization failed (this is normal if backend is not running):', error.message);
+    // 不要抛出错误，让应用继续运行
+  }
+};
+
+// 请求拦截器：确保每个请求前都有有效会话
+api.interceptors.request.use(async (config) => {
+  // 只在特定的API路径上初始化会话，并且不是用户相关的API
+  if (config.url && 
+      !config.url.includes('/session/init') && 
+      !config.url.includes('/user/login') && 
+      !config.url.includes('/user/profile') &&
+      !config.url.includes('/user/logout')) {
+    try {
+      await initializeSession();
+    } catch (error) {
+      // 忽略会话初始化错误，让请求继续
+      console.log('Session init skipped:', error.message);
+    }
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+// 响应拦截器：处理会话过期
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    // 避免无限重试
+    if (error.config && error.config.__isRetryRequest) {
+      return Promise.reject(error);
+    }
+    
+    // 只对特定的401/403错误进行重试，避免文件上传等请求的问题
+    if ((error.response?.status === 403 || error.response?.status === 401) && 
+        !error.config.url?.includes('/tasks/submit') && 
+        !error.config.headers?.['Content-Type']?.includes('multipart/form-data')) {
+      
+      // 会话可能过期，重新初始化
+      sessionInitialized = false;
+      
+      try {
+        await initializeSession();
+        // 标记为重试请求
+        error.config.__isRetryRequest = true;
+        // 重试原请求
+        return api.request(error.config);
+      } catch (retryError) {
+        console.error('Retry failed:', retryError);
+        return Promise.reject(error);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+// 认证服务API
+export const authService = {
+  register: (username, password, email = '') => {
+    return api.post('/api/user/register', {
+      username,
+      password,
+      email
+    });
+  },
+
+  login: (username, password) => {
+    return api.post('/api/user/login', {
+      username,
+      password
+    });
+  },
+
+  logout: () => {
+    return api.post('/api/user/logout');
+  },
+
+  getProfile: () => {
+    return api.get('/api/user/profile');
+  },
+
+  getStats: () => {
+    return api.get('/api/user/stats');
+  }
+};
+
 // 视频水印移除API
 export const watermarkService = {
   uploadVideo: async (file, onProgress) => {

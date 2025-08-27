@@ -5,8 +5,9 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import Layout from '../../components/Layout/Layout';
 import TaskStatus from '../../components/Tasks/TaskStatus';
 import ProgressBar from '../../components/Tasks/ProgressBar';
+import withAuth from '../../components/Auth/withAuth';
 
-export default function TaskDetail() {
+function TaskDetail() {
   const router = useRouter();
   const { id } = router.query;
   const { t } = useTranslation('common');
@@ -419,6 +420,9 @@ export default function TaskDetail() {
     </Layout>
   );
 }
+
+// 使用 withAuth HOC 包装组件
+export default withAuth(TaskDetail);
 
 export async function getServerSideProps({ locale }) {
   return {
