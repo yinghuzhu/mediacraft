@@ -1,8 +1,7 @@
 import axios from 'axios';
 
-// API基础URL配置
+// API基础URL配置 - 使用后端API域名
 const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:50001';
-
 const api = axios.create({
   baseURL: baseURL,
   headers: {
@@ -32,12 +31,10 @@ const initializeSession = async () => {
 
 // 请求拦截器：确保每个请求前都有有效会话
 api.interceptors.request.use(async (config) => {
-  // 只在特定的API路径上初始化会话，并且不是用户相关的API
+  // 只在任务相关的API上初始化会话，避免用户认证API的干扰
   if (config.url && 
-      !config.url.includes('/session/init') && 
-      !config.url.includes('/user/login') && 
-      !config.url.includes('/user/profile') &&
-      !config.url.includes('/user/logout')) {
+      (config.url.includes('/tasks/') || config.url.includes('/files/')) &&
+      !config.url.includes('/session/init')) {
     try {
       await initializeSession();
     } catch (error) {
@@ -59,8 +56,17 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
     
-    // 只对特定的401/403错误进行重试，避免文件上传等请求的问题
+    // 对于用户认证相关的401错误，不进行重试，直接返回错误
+    if (error.response?.status === 401 && 
+        (error.config.url?.includes('/user/profile') || 
+         error.config.url?.includes('/user/login') ||
+         error.config.url?.includes('/user/logout'))) {
+      return Promise.reject(error);
+    }
+    
+    // 只对任务相关的401/403错误进行会话重试
     if ((error.response?.status === 403 || error.response?.status === 401) && 
+        (error.config.url?.includes('/tasks/') || error.config.url?.includes('/files/')) &&
         !error.config.url?.includes('/tasks/submit') && 
         !error.config.headers?.['Content-Type']?.includes('multipart/form-data')) {
       
@@ -109,6 +115,41 @@ export const authService = {
 
   getStats: () => {
     return api.get('/api/user/stats');
+  },
+
+  getUserTasks: () => {
+    return api.get('/api/user/tasks');
+  }
+};
+
+// 通用任务服务API
+export const taskService = {
+  // 获取任务状态
+  getTaskStatus: (taskId) => {
+    return api.get(`/api/tasks/${taskId}/status`);
+  },
+
+  // 获取任务详情
+  getTaskDetail: (taskId) => {
+    return api.get(`/api/tasks/${taskId}/status`);
+  },
+
+  // 取消任务
+  cancelTask: (taskId) => {
+    return api.delete(`/api/tasks/${taskId}`);
+  },
+
+  // 更新任务片段时间
+  updateSegment: (taskId, segmentIndex, startTime, endTime) => {
+    return api.put(`/api/tasks/${taskId}/segments/${segmentIndex}`, {
+      start_time: startTime,
+      end_time: endTime
+    });
+  },
+
+  // 获取下载链接
+  getDownloadUrl: (taskId) => {
+    return `${baseURL}/api/tasks/${taskId}/download`;
   }
 };
 
@@ -216,6 +257,14 @@ export const videoMergerService = {
   downloadResult: (taskId) => api.get(`/api/tasks/${taskId}/download`, {
     responseType: 'blob'
   }),
+
+  // 更新视频片段时间
+  updateSegment: (taskId, segmentIndex, startTime, endTime) => {
+    return api.put(`/api/tasks/${taskId}/segments/${segmentIndex}`, {
+      start_time: startTime,
+      end_time: endTime
+    });
+  },
 
   getDownloadUrl: (taskId) => {
     return `${baseURL}/api/tasks/${taskId}/download`;

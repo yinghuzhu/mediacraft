@@ -28,9 +28,15 @@ export function AuthProvider({ children }) {
         setIsAuthenticated(false);
       }
     } catch (error) {
-      console.log('Auth check failed:', error.message);
-      setUser(null);
-      setIsAuthenticated(false);
+      // 只有在明确的401错误时才认为未登录，其他错误可能是网络问题
+      if (error.response?.status === 401) {
+        console.log('User not authenticated');
+        setUser(null);
+        setIsAuthenticated(false);
+      } else {
+        console.log('Auth check failed (network/server error):', error.message);
+        // 保持当前状态，不清除用户信息
+      }
     } finally {
       setIsLoading(false);
     }

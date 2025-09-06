@@ -79,21 +79,9 @@ export default function EditSegmentsSection({ taskUuid, onStartMerge }) {
     }
     
     try {
-      const response = await fetch(`/api/tasks/${taskUuid}/segments/${index}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          start_time: startTime,
-          end_time: endTime
-        })
-      });
+      const response = await videoMergerService.updateSegment(taskUuid, index, startTime, endTime);
       
-      const data = await response.json();
-      
-      if (data.success) {
+      if (response.data && response.data.success) {
         // 计算片段时长
         const segmentDuration = endTime - startTime;
         
@@ -110,7 +98,7 @@ export default function EditSegmentsSection({ taskUuid, onStartMerge }) {
           )
         }));
       } else {
-        setError(data.message || 'Failed to update segment time');
+        setError(response.data?.message || 'Failed to update segment time');
       }
     } catch (err) {
       console.error('Update segment time error:', err);

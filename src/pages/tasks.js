@@ -4,6 +4,7 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import Layout from '../components/Layout/Layout';
 import TaskList from '../components/Tasks/TaskList';
 import withAuth from '../components/Auth/withAuth';
+import { authService } from '../services/api';
 
 function MyTasks() {
   const { t } = useTranslation('common');
@@ -18,19 +19,12 @@ function MyTasks() {
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/user/tasks', {
-        credentials: 'include'
-      });
+      const response = await authService.getUserTasks();
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setTasks(data.data.tasks || []);
-        } else {
-          setError(data.message || t('tasks.loadFailed'));
-        }
+      if (response.data && response.data.success) {
+        setTasks(response.data.data.tasks || []);
       } else {
-        setError(t('common.error'));
+        setError(response.data?.message || t('tasks.loadFailed'));
       }
     } catch (err) {
       setError(t('tasks.loadFailed'));

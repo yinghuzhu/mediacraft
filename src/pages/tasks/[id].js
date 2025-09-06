@@ -6,6 +6,10 @@ import Layout from '../../components/Layout/Layout';
 import TaskStatus from '../../components/Tasks/TaskStatus';
 import ProgressBar from '../../components/Tasks/ProgressBar';
 import withAuth from '../../components/Auth/withAuth';
+import { taskService } from '../../services/api';
+
+// Get API base URL from environment
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:50001';
 
 function TaskDetail() {
   const router = useRouter();
@@ -32,20 +36,12 @@ function TaskDetail() {
   const fetchTaskDetail = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/tasks/${id}/status`, {
-        credentials: 'include'
-      });
+      const response = await taskService.getTaskDetail(id);
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data) {
-          setTask(data.data);
-        } else {
-          setError(data.message || '获取任务详情失败');
-        }
+      if (response.data && response.data.success && response.data.data) {
+        setTask(response.data.data);
       } else {
-        const errorData = await response.json();
-        setError(errorData.message || '网络请求失败');
+        setError(response.data?.message || '获取任务详情失败');
       }
     } catch (err) {
       setError('获取任务详情时发生错误');
@@ -216,7 +212,7 @@ function TaskDetail() {
                 {task.input_file_path && (
                   <div className="w-24 h-18 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
                     <img
-                      src={`/api/tasks/${task.task_id || task.task_uuid}/thumbnail`}
+                      src={`${API_BASE_URL}/api/tasks/${task.task_id || task.task_uuid}/thumbnail`}
                       alt="Video thumbnail"
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -244,7 +240,7 @@ function TaskDetail() {
                 <TaskStatus status={task.status} />
                 {task.status === 'completed' && task.processed_file_path && (
                   <a
-                    href={`/api/tasks/${task.task_id || task.task_uuid}/download`}
+                    href={`${API_BASE_URL}/api/tasks/${task.task_id || task.task_uuid}/download`}
                     className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors"
                     target="_blank"
                     rel="noopener noreferrer"
@@ -339,7 +335,7 @@ function TaskDetail() {
                         {/* Video Thumbnail */}
                         <div className="w-20 h-15 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
                           <img
-                            src={`/api/tasks/${task.task_id || task.task_uuid}/files/${index}/thumbnail`}
+                            src={`${API_BASE_URL}/api/tasks/${task.task_id || task.task_uuid}/files/${index}/thumbnail`}
                             alt={`${file.filename} thumbnail`}
                             className="w-full h-full object-cover"
                             onError={(e) => {
@@ -404,7 +400,7 @@ function TaskDetail() {
                 </button>
                 {task.status === 'completed' && task.processed_file_path && (
                   <a
-                    href={`/api/tasks/${task.task_id || task.task_uuid}/download`}
+                    href={`${API_BASE_URL}/api/tasks/${task.task_id || task.task_uuid}/download`}
                     className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors"
                     target="_blank"
                     rel="noopener noreferrer"

@@ -2,6 +2,10 @@ import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import TaskStatus from './TaskStatus';
 import ProgressBar from './ProgressBar';
+import { taskService } from '../../services/api';
+
+// Get API base URL from environment
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:50001';
 
 export default function TaskItem({ task }) {
   const { t } = useTranslation('common');
@@ -69,7 +73,7 @@ export default function TaskItem({ task }) {
         <div className="w-16 h-12 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
           {task.input_file_path ? (
             <img
-              src={`/api/tasks/${task.task_id || task.task_uuid}/thumbnail`}
+              src={`${API_BASE_URL}/api/tasks/${task.task_id || task.task_uuid}/thumbnail`}
               alt="Video thumbnail"
               className="w-full h-full object-cover"
               onError={(e) => {
@@ -114,7 +118,7 @@ export default function TaskItem({ task }) {
       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
         {task.status === 'completed' && task.processed_file_path ? (
           <a
-            href={`/api/tasks/${task.task_id || task.task_uuid}/download`}
+            href={`${API_BASE_URL}/api/tasks/${task.task_id || task.task_uuid}/download`}
             className="text-primary hover:text-primary-dark transition-colors"
             target="_blank"
             rel="noopener noreferrer"
