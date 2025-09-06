@@ -4,11 +4,11 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "env": {
-    "NEXT_PUBLIC_API_URL": "http://mcapi.yzhu.name"
+    "NEXT_PUBLIC_API_URL": ""
   },
   "build": {
     "env": {
-      "NEXT_PUBLIC_API_URL": "http://mcapi.yzhu.name"
+      "NEXT_PUBLIC_API_URL": ""
     }
   }
 }
