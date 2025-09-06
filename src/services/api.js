@@ -1,7 +1,15 @@
 import axios from 'axios';
 
-// API基础URL配置 - 使用后端API域名
-const baseURL = process.env.NEXT_PUBLIC_API_URL !== undefined ? process.env.NEXT_PUBLIC_API_URL : 'http://localhost:50001';
+// API基础URL配置 - 正确处理空字符串
+const baseURL = (() => {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  // 如果NEXT_PUBLIC_API_URL被明确设置为空字符串，使用相对路径
+  if (envUrl === '') {
+    return ''; // 使用相对路径进行API调用
+  }
+  // 如果未定义或未设置，默认为开发环境localhost
+  return envUrl || 'http://localhost:50001';
+})();
 const api = axios.create({
   baseURL: baseURL,
   headers: {

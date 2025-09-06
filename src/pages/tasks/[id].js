@@ -8,8 +8,16 @@ import ProgressBar from '../../components/Tasks/ProgressBar';
 import withAuth from '../../components/Auth/withAuth';
 import { taskService } from '../../services/api';
 
-// Get API base URL from environment
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:50001';
+// Get API base URL from environment - handle empty string correctly
+const API_BASE_URL = (() => {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  // If NEXT_PUBLIC_API_URL is explicitly set to empty string, use relative paths
+  if (envUrl === '') {
+    return ''; // Use relative paths for API calls
+  }
+  // If undefined or not set, default to localhost for development
+  return envUrl || 'http://localhost:50001';
+})();
 
 function TaskDetail() {
   const router = useRouter();
