@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // API基础URL配置 - 使用后端API域名
-const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:50001';
+const baseURL = process.env.NEXT_PUBLIC_API_URL !== undefined ? process.env.NEXT_PUBLIC_API_URL : 'http://localhost:50001';
 const api = axios.create({
   baseURL: baseURL,
   headers: {
@@ -149,7 +149,7 @@ export const taskService = {
 
   // 获取下载链接
   getDownloadUrl: (taskId) => {
-    return `${baseURL}/api/tasks/${taskId}/download`;
+    return baseURL ? `${baseURL}/api/tasks/${taskId}/download` : `/api/tasks/${taskId}/download`;
   }
 };
 
@@ -216,7 +216,7 @@ export const watermarkService = {
   },
 
   getDownloadUrl: (taskId) => {
-    return `${baseURL}/api/tasks/${taskId}/download`;
+    return baseURL ? `${baseURL}/api/tasks/${taskId}/download` : `/api/tasks/${taskId}/download`;
   },
 };
 
@@ -267,7 +267,7 @@ export const videoMergerService = {
   },
 
   getDownloadUrl: (taskId) => {
-    return `${baseURL}/api/tasks/${taskId}/download`;
+    return baseURL ? `${baseURL}/api/tasks/${taskId}/download` : `/api/tasks/${taskId}/download`;
   },
 };
 
