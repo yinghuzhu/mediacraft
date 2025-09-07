@@ -92,7 +92,8 @@ function MyTasks() {
 // 使用 withAuth HOC 包装组件
 export default withAuth(MyTasks);
 
-export async function getStaticProps({ locale }) {
+// Note: Using getServerSideProps instead of getStaticProps for authenticated pages
+export async function getServerSideProps({ locale }) {
   return {
     props: {
       ...(await serverSideTranslations(locale, ['common'])),
