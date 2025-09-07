@@ -32,6 +32,7 @@
     "error": "An error occurred",
     "success": "Success!",
     "upload": "Upload",
+    "uploading": "Uploading",
     "download": "Download",
     "cancel": "Cancel",
     "save": "Save",
@@ -40,6 +41,8 @@
     "start": "Start",
     "back": "Back",
     "next": "Next",
+    "reselect": "Reselect",
+    "files": "files",
     "unknown": "Unknown"
   },
   "watermarkRemover": {
@@ -134,6 +137,14 @@
       "unknown": "Unknown status",
       "download": "Download Merged Video",
       "taskSubmitted": "Merge task submitted successfully! Redirecting to task list..."
+    },
+    "info": {
+      "mergeOrder": "Videos will be merged in the order selected, and all audio will be preserved"
+    },
+    "validation": {
+      "minFiles": "Video merge requires at least 2 video files",
+      "maxFiles": "Maximum {maxFiles} video files can be selected",
+      "selectFiles": "Please select at least 2 video files"
     },
     "errors": {
       "unsupportedFormat": "Unsupported video format. Please upload MP4, MOV, AVI, or MKV files.",

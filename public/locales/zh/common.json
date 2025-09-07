@@ -32,6 +32,7 @@
     "error": "发生错误",
     "success": "成功！",
     "upload": "上传",
+    "uploading": "上传中",
     "download": "下载",
     "cancel": "取消",
     "save": "保存",
@@ -40,6 +41,8 @@
     "start": "开始",
     "back": "返回",
     "next": "下一步",
+    "reselect": "重新选择",
+    "files": "个文件",
     "unknown": "未知"
   },
   "watermarkRemover": {
@@ -132,7 +135,16 @@
       "completed": "视频合并完成！",
       "failed": "视频合并失败",
       "unknown": "未知状态",
-      "download": "下载合并视频"
+      "download": "下载合并视频",
+      "taskSubmitted": "合并任务提交成功！正在跳转到任务列表..."
+    },
+    "info": {
+      "mergeOrder": "视频将按照选择顺序进行合并，合并后会保留所有音频"
+    },
+    "validation": {
+      "minFiles": "视频合并至少需要2个视频文件",
+      "maxFiles": "最多只能选择{maxFiles}个视频文件",
+      "selectFiles": "请选择至少2个视频文件"
     },
     "errors": {
       "unsupportedFormat": "不支持的视频格式。请上传MP4、MOV、AVI或MKV文件。",

@@ -2,77 +2,140 @@ import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import Layout from '../components/Layout/Layout';
-import CreateTaskSection from '../components/VideoMerger/CreateTaskSection';
-import UploadSection from '../components/VideoMerger/UploadSection';
-import EditSegmentsSection from '../components/VideoMerger/EditSegmentsSection';
-import ProcessingStatus from '../components/VideoMerger/ProcessingStatus';
 import withAuth from '../components/Auth/withAuth';
+import Button from '../components/UI/Button';
+import Alert from '../components/UI/Alert';
+import { videoMergerService } from '../services/api';
 
 function VideoMerger() {
   const { t } = useTranslation('common');
-  const [currentStep, setCurrentStep] = useState('create-task');
-  const [taskData, setTaskData] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [taskResult, setTaskResult] = useState(null);
   
-  const handleTaskCreated = (data) => {
-    setTaskData(data);
-    setCurrentStep('upload');
+  const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
+  const maxFileSize = 500 * 1024 * 1024; // 500MB
+  const maxFiles = 10;
+  
+  const handleFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    validateAndSetFiles(selectedFiles);
   };
   
-  const handleVideoUploaded = (updatedTaskData) => {
-    // 更新任务数据（如果有的话）
-    if (updatedTaskData) {
-      setTaskData(updatedTaskData);
-    }
-    setCurrentStep('edit-segments');
-  };
-  
-  const handleStartMerge = () => {
-    // Redirect to task detail page instead of processing status
-    if (taskData && taskData.taskId) {
-      window.location.href = `/tasks/${taskData.taskId}`;
-    }
-  };
-  
-  const renderStepIndicator = () => {
-    const steps = [
-      { id: 'create-task', label: t('videoMerger.steps.createTask') },
-      { id: 'upload', label: t('videoMerger.steps.uploadVideos') },
-      { id: 'edit-segments', label: t('videoMerger.steps.editSegments') },
-      { id: 'processing', label: t('videoMerger.steps.processing') },
-    ];
+  const validateAndSetFiles = (selectedFiles) => {
+    setError(null);
     
-    return (
-      <div className="flex justify-center mb-8">
-        {steps.map((step, index) => (
-          <div key={step.id} className="flex items-center">
-            <div className={`flex flex-col items-center ${index > 0 ? 'ml-8' : ''}`}>
-              <div 
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  currentStep === step.id 
-                    ? 'bg-primary text-white' 
-                    : steps.findIndex(s => s.id === currentStep) > index 
-                      ? 'bg-green-500 text-white'
-                      : 'bg-gray-200 text-gray-600'
-                }`}
-              >
-                {index + 1}
-              </div>
-              <span className="text-sm mt-1">{step.label}</span>
-            </div>
-            
-            {index < steps.length - 1 && (
-              <div 
-                className={`flex-grow h-0.5 w-8 mx-2 ${
-                  steps.findIndex(s => s.id === currentStep) > index 
-                    ? 'bg-green-500' 
-                    : 'bg-gray-200'
-                }`}
-              ></div>
-            )}
-          </div>
-        ))}
-      </div>
-    );
+    if (!selectedFiles.length) return;
+    
+    if (selectedFiles.length < 2) {
+      setError(t('videoMerger.validation.minFiles'));
+      return;
+    }
+    
+    if (selectedFiles.length > maxFiles) {
+      setError(t('videoMerger.validation.maxFiles', { maxFiles }));
+      return;
+    }
+    
+    const validFiles = [];
+    const errors = [];
+    
+    selectedFiles.forEach(file => {
+      if (!allowedTypes.includes(file.type)) {
+        errors.push(`${file.name}: ${t('videoMerger.errors.unsupportedFormat')}`);
+        return;
+      }
+      
+      if (file.size > maxFileSize) {
+        errors.push(`${file.name}: ${t('videoMerger.errors.fileTooLarge')}`);
+        return;
+      }
+      
+      validFiles.push(file);
+    });
+    
+    if (errors.length > 0) {
+      setError(errors.join(', '));
+      return;
+    }
+    
+    setFiles(validFiles);
+  };
+  
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(true);
+  };
+  
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+  };
+  
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    validateAndSetFiles(droppedFiles);
+  };
+  
+  const handleSubmit = async () => {
+    if (files.length < 2) {
+      setError(t('videoMerger.validation.selectFiles'));
+      return;
+    }
+    
+    setIsUploading(true);
+    setError(null);
+    setUploadProgress(0);
+    
+    try {
+      const taskConfig = {
+        merge_mode: 'concat',
+        audio_handling: 'keep_all',
+        quality_preset: 'medium'
+      };
+      
+      const response = await videoMergerService.submitTask(
+        files,
+        taskConfig,
+        (progress) => {
+          setUploadProgress(progress);
+        }
+      );
+      
+      if (response.data && response.data.task_id) {
+        setTaskResult(response.data);
+        setSuccess(true);
+        
+        // 2秒后跳转到任务详情页
+        setTimeout(() => {
+          window.location.href = `/tasks/${response.data.task_id}`;
+        }, 2000);
+      }
+      
+    } catch (err) {
+      console.error('Upload error:', err);
+      setError(err.response?.data?.message || err.message || t('videoMerger.errors.uploadFailed'));
+    } finally {
+      setIsUploading(false);
+    }
+  };
+  
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
   
   return (
@@ -81,7 +144,7 @@ function VideoMerger() {
       description={t('videoMerger.description')}
     >
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-2xl mx-auto">
           <h1 className="text-3xl font-bold mb-6 text-center">
             {t('videoMerger.title')}
           </h1>
@@ -90,29 +153,131 @@ function VideoMerger() {
             {t('videoMerger.description')}
           </p>
           
-          {renderStepIndicator()}
-          
-          {currentStep === 'create-task' && (
-            <CreateTaskSection onTaskCreated={handleTaskCreated} />
-          )}
-          
-          {currentStep === 'upload' && taskData && (
-            <UploadSection 
-              taskUuid={taskData.taskId}
-              onVideoUploaded={handleVideoUploaded} 
+          {error && (
+            <Alert 
+              type="danger" 
+              message={error} 
+              onClose={() => setError(null)} 
             />
           )}
           
-          {currentStep === 'edit-segments' && taskData && (
-            <EditSegmentsSection 
-              taskUuid={taskData.taskId}
-              onStartMerge={handleStartMerge}
+          {success && (
+            <Alert 
+              type="success" 
+              message={t('videoMerger.processing.taskSubmitted')} 
+              onClose={() => setSuccess(false)} 
             />
           )}
           
-          {currentStep === 'processing' && taskData && (
-            <ProcessingStatus taskUuid={taskData.taskId} />
-          )}
+          <div className="card">
+            <div className="card-body">
+              {!files.length ? (
+                <div 
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                    dragActive 
+                      ? 'border-primary bg-primary-50' 
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
+                  <input
+                    type="file"
+                    multiple
+                    accept="video/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    id="video-upload"
+                  />
+                  <label htmlFor="video-upload" className="cursor-pointer">
+                    <svg 
+                      className="mx-auto h-16 w-16 text-gray-400 mb-4" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={1} 
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" 
+                      />
+                    </svg>
+                    
+                    <p className="mb-2 text-sm text-gray-500">
+                      {t('videoMerger.upload.dragDrop')}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {t('videoMerger.upload.supportedFormats')}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {t('videoMerger.upload.maxVideos')}
+                    </p>
+                  </label>
+                </div>
+              ) : (
+                <div>
+                  <h3 className="text-lg font-medium mb-4">{t('tasks.types.video_merge')} - {files.length} {t('common.files')}</h3>
+                  
+                  <div className="space-y-2 mb-6">
+                    {files.map((file, index) => (
+                      <div 
+                        key={index} 
+                        className="flex items-center justify-between bg-gray-50 p-3 rounded"
+                      >
+                        <div className="flex items-center">
+                          <span className="mr-2 text-gray-500">{index + 1}.</span>
+                          <span className="truncate max-w-xs">{file.name}</span>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {formatFileSize(file.size)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {isUploading && (
+                    <div className="mb-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">{t('common.uploading')}</span>
+                        <span className="text-sm text-gray-500">{uploadProgress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${uploadProgress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex space-x-3">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => setFiles([])}
+                      disabled={isUploading}
+                    >
+                      {t('common.reselect')}
+                    </Button>
+                    <Button 
+                      onClick={handleSubmit}
+                      loading={isUploading}
+                      disabled={isUploading}
+                      className="flex-1"
+                    >
+                      {t('videoMerger.editSegments.startMerging')}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="mt-6 text-center text-sm text-gray-500">
+            <p>{t('videoMerger.info.mergeOrder')}</p>
+          </div>
         </div>
       </div>
     </Layout>
