@@ -97,7 +97,7 @@ export default function Home() {
                   {t('features.merger.description')}
                 </p>
                 <div className="text-center">
-                  <Link href="/video-merger" className="btn btn-primary">
+                  <Link href="/video-merger-simple" className="btn btn-primary">
                     {t('features.merger.cta')}
                   </Link>
                 </div>

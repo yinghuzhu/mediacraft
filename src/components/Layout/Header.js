@@ -80,8 +80,8 @@ export default function Header() {
               {t('nav.watermarkRemover')}
             </Link>
             <Link
-              href="/video-merger"
-              className={`px-3 py-2 rounded-md ${router.pathname === '/video-merger' ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100'
+              href="/video-merger-simple"
+              className={`px-3 py-2 rounded-md ${router.pathname === '/video-merger-simple' ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100'
                 }`}
             >
               {t('nav.videoMerger')}

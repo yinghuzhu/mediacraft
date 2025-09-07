@@ -230,6 +230,50 @@ export const watermarkService = {
 
 // 视频合并API
 export const videoMergerService = {
+  // 一次性提交视频合并任务（类似水印去除）
+  submitTask: async (files, taskConfig, onProgress) => {
+    try {
+      const formData = new FormData();
+      formData.append('task_type', 'video_merge');
+      
+      // 添加所有视频文件
+      files.forEach((file, index) => {
+        formData.append('files', file);
+      });
+      
+      // 添加任务配置
+      if (taskConfig) {
+        formData.append('task_config', JSON.stringify(taskConfig));
+      }
+      
+      const response = await api.post('/api/tasks/submit', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (onProgress && progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            onProgress(percentCompleted);
+          }
+        },
+      });
+      
+      if (response.data && response.data.task_id) {
+        return {
+          data: {
+            task_id: response.data.task_id,
+            task_uuid: response.data.task_id,
+            status: response.data.status,
+            message: response.data.message
+          }
+        };
+      } else {
+        throw new Error(response.data?.message || 'Upload failed');
+      }
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // 以下为向后兼容的旧API，逐渐废弃
   // 创建视频合并任务
   createTask: (taskName) => api.post('/api/tasks/create', {
     task_type: 'video_merge',

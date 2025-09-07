@@ -119,8 +119,8 @@ export default function TaskItem({ task }) {
         <ProgressBar percentage={task.progress_percentage || 0} />
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-        <span title={formatDate(task.created_at)}>
-          {formatRelativeTime(task.created_at)}
+        <span title={formatRelativeTime(task.created_at)}>
+          {formatDate(task.created_at)}
         </span>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
