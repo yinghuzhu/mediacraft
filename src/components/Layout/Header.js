@@ -128,7 +128,7 @@ export default function Header() {
                       onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
-                      登出
+                      {t('auth.logout')}
                     </button>
                   </div>
                 )}
@@ -138,7 +138,7 @@ export default function Header() {
                 onClick={() => setIsLoginModalOpen(true)}
                 className="px-3 py-2 rounded-md bg-primary text-white hover:bg-blue-600"
               >
-                登录
+                {t('auth.loginButton')}
               </button>
             )}
 

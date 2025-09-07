@@ -52,10 +52,10 @@ export default function TaskItem({ task }) {
       const diffHours = Math.floor(diffMins / 60);
       const diffDays = Math.floor(diffHours / 24);
       
-      if (diffMins < 1) return 'Just now';
-      if (diffMins < 60) return `${diffMins} min ago`;
-      if (diffHours < 24) return `${diffHours}h ago`;
-      if (diffDays < 7) return `${diffDays}d ago`;
+      if (diffMins < 1) return t('time.justNow');
+      if (diffMins < 60) return t('time.minutesAgo', { minutes: diffMins });
+      if (diffHours < 24) return t('time.hoursAgo', { hours: diffHours });
+      if (diffDays < 7) return t('time.daysAgo', { days: diffDays });
       
       // 超过一周显示具体日期
       return date.toLocaleDateString();
@@ -66,7 +66,7 @@ export default function TaskItem({ task }) {
 
   const formatFileSize = (bytes) => {
     if (!bytes) return '-';
-    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const sizes = [t('fileSize.bytes'), t('fileSize.kb'), t('fileSize.mb'), t('fileSize.gb')];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };

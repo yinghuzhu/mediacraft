@@ -42,10 +42,10 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
         onClose();
         setFormData({ username: '', password: '', email: '' });
       } else {
-        setError(result.message || '操作失败');
+        setError(result.message || t('auth.operationFailed'));
       }
     } catch (err) {
-      setError(err.message || '操作失败');
+      setError(err.message || t('auth.operationFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -64,7 +64,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">
-            {isLogin ? '登录' : '注册'}
+            {isLogin ? t('auth.login') : t('auth.register')}
           </h2>
           <button
             onClick={onClose}
@@ -87,7 +87,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-              用户名
+              {t('auth.username')}
             </label>
             <input
               type="text"
@@ -98,14 +98,14 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
               required
               minLength={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="请输入用户名"
+              placeholder={t('auth.usernamePlaceholder')}
             />
           </div>
 
           {!isLogin && (
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                邮箱 (可选)
+                {t('auth.emailOptional')}
               </label>
               <input
                 type="email"
@@ -114,14 +114,14 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
                 value={formData.email}
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="请输入邮箱"
+                placeholder={t('auth.emailPlaceholder')}
               />
             </div>
           )}
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              密码
+              {t('auth.password')}
             </label>
             <input
               type="password"
@@ -132,7 +132,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
               required
               minLength={6}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="请输入密码"
+              placeholder={t('auth.passwordPlaceholder')}
             />
           </div>
 
@@ -143,7 +143,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
               disabled={isLoading}
               className="flex-1"
             >
-              {isLogin ? '登录' : '注册'}
+              {isLogin ? t('auth.loginButton') : t('auth.registerButton')}
             </Button>
             <Button
               type="button"
@@ -152,20 +152,20 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
               disabled={isLoading}
               className="flex-1"
             >
-              {isLogin ? '注册账号' : '已有账号'}
+              {isLogin ? t('auth.createAccount') : t('auth.haveAccount')}
             </Button>
           </div>
         </form>
 
         <div className="mt-4 text-center text-sm text-gray-600">
           <p>
-            {isLogin ? '没有账号？' : '已有账号？'}
+            {isLogin ? t('auth.noAccount') : t('auth.haveAccountQuestion')}
             <button
               type="button"
               onClick={toggleMode}
               className="text-primary hover:underline ml-1"
             >
-              {isLogin ? '立即注册' : '立即登录'}
+              {isLogin ? t('auth.registerNow') : t('auth.loginNow')}
             </button>
           </p>
         </div>

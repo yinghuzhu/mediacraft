@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { useTranslation } from 'next-i18next';
 import { authService } from '../services/api';
 
 const AuthContext = createContext();
@@ -12,6 +13,7 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }) {
+  const { t } = useTranslation('common');
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -60,7 +62,7 @@ export function AuthProvider({ children }) {
     } catch (error) {
       return {
         success: false,
-        message: error.response?.data?.message || error.message || '登录失败'
+        message: error.response?.data?.message || error.message || t('auth.loginFailed')
       };
     }
   };
@@ -78,7 +80,7 @@ export function AuthProvider({ children }) {
     } catch (error) {
       return {
         success: false,
-        message: error.response?.data?.message || error.message || '注册失败'
+        message: error.response?.data?.message || error.message || t('auth.registrationFailed')
       };
     }
   };

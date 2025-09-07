@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'next-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import LoginModal from './LoginModal';
 
@@ -7,6 +8,7 @@ import LoginModal from './LoginModal';
  */
 export default function withAuth(WrappedComponent) {
   return function AuthenticatedComponent(props) {
+    const { t } = useTranslation('common');
     const { isAuthenticated, isLoading, user } = useAuth();
     const [showLoginModal, setShowLoginModal] = useState(false);
 
@@ -37,7 +39,7 @@ export default function withAuth(WrappedComponent) {
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-gray-600">正在验证登录状态...</p>
+            <p className="text-gray-600">{t('auth.verifyingLogin')}</p>
           </div>
         </div>
       );
@@ -49,13 +51,13 @@ export default function withAuth(WrappedComponent) {
         <>
           <div className="min-h-screen flex items-center justify-center bg-gray-50">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">需要登录</h2>
-              <p className="text-gray-600 mb-6">请登录后使用此功能</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">{t('auth.needLogin')}</h2>
+              <p className="text-gray-600 mb-6">{t('auth.pleaseLoginToUse')}</p>
               <button
                 onClick={() => setShowLoginModal(true)}
                 className="btn btn-primary"
               >
-                立即登录
+                {t('auth.loginNow')}
               </button>
             </div>
           </div>

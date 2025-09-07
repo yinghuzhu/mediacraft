@@ -189,5 +189,44 @@
     "backToList": "Back to Task List",
     "refreshStatus": "Refresh Status",
     "taskNotFound": "Task Not Found"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "username": "Username",
+    "password": "Password",
+    "email": "Email",
+    "emailOptional": "Email (Optional)",
+    "loginButton": "Login",
+    "registerButton": "Register",
+    "createAccount": "Create Account",
+    "haveAccount": "Already have account",
+    "noAccount": "Don't have an account?",
+    "haveAccountQuestion": "Already have an account?",
+    "registerNow": "Register now",
+    "loginNow": "Login now",
+    "needLogin": "Login Required",
+    "pleaseLoginToUse": "Please login to use this feature",
+    "loginFailed": "Login failed",
+    "registrationFailed": "Registration failed",
+    "operationFailed": "Operation failed",
+    "verifyingLogin": "Verifying login status...",
+    "usernamePlaceholder": "Please enter username",
+    "passwordPlaceholder": "Please enter password",
+    "emailPlaceholder": "Please enter email",
+    "logout": "Logout",
+    "loginPrompt": "Please login first before uploading video files"
+  },
+  "time": {
+    "justNow": "Just now",
+    "minutesAgo": "{minutes} min ago",
+    "hoursAgo": "{hours}h ago",
+    "daysAgo": "{days}d ago"
+  },
+  "fileSize": {
+    "bytes": "B",
+    "kb": "KB",
+    "mb": "MB",
+    "gb": "GB"
   }
 }
