@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import Layout from '../components/Layout/Layout';
@@ -16,6 +16,8 @@ function VideoMerger() {
   const [success, setSuccess] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [taskResult, setTaskResult] = useState(null);
+  const [videoSegments, setVideoSegments] = useState([]);
+  const [showSegmentEditor, setShowSegmentEditor] = useState(false);
   
   const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
   const maxFileSize = 500 * 1024 * 1024; // 500MB
@@ -64,6 +66,22 @@ function VideoMerger() {
     }
     
     setFiles(validFiles);
+    initializeVideoSegments(validFiles);
+  };
+  
+  const initializeVideoSegments = (fileList) => {
+    const segments = fileList.map((file, index) => ({
+      id: `segment-${index}-${Date.now()}`,
+      filename: file.name,
+      size: file.size,
+      file: file,
+      startTime: 0,
+      endTime: null, // Will be set when video metadata is loaded
+      duration: null,
+      segmentDuration: null
+    }));
+    setVideoSegments(segments);
+    setShowSegmentEditor(true);
   };
   
   const handleDragOver = (e) => {
@@ -87,6 +105,96 @@ function VideoMerger() {
     validateAndSetFiles(droppedFiles);
   };
   
+  // 时间段管理函数
+  const handleTimeUpdate = (segmentId, startTime, endTime) => {
+    if (startTime >= endTime) {
+      setError('开始时间必须小于结束时间');
+      return;
+    }
+    
+    setVideoSegments(prev => prev.map(segment => 
+      segment.id === segmentId 
+        ? { 
+            ...segment, 
+            startTime: startTime, 
+            endTime: endTime,
+            segmentDuration: endTime - startTime
+          } 
+        : segment
+    ));
+    setError(null);
+  };
+  
+  const handleTimeReset = (segmentId) => {
+    setVideoSegments(prev => prev.map(segment => 
+      segment.id === segmentId 
+        ? { 
+            ...segment, 
+            startTime: 0, 
+            endTime: segment.duration || 0,
+            segmentDuration: segment.duration || 0
+          } 
+        : segment
+    ));
+  };
+  
+  const loadVideoMetadata = (file, segmentId) => {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      
+      video.onloadedmetadata = () => {
+        const duration = video.duration;
+        setVideoSegments(prev => prev.map(segment => 
+          segment.id === segmentId 
+            ? { 
+                ...segment, 
+                duration: duration,
+                endTime: duration,
+                segmentDuration: duration
+              } 
+            : segment
+        ));
+        resolve(duration);
+      };
+      
+      video.onerror = () => {
+        console.warn(`无法加载视频元数据: ${file.name}`);
+        resolve(0);
+      };
+      
+      video.src = URL.createObjectURL(file);
+    });
+  };
+  
+  useEffect(() => {
+    if (videoSegments.length > 0) {
+      videoSegments.forEach(segment => {
+        if (segment.duration === null) {
+          loadVideoMetadata(segment.file, segment.id);
+        }
+      });
+    }
+  }, [videoSegments]);
+  
+  const calculateTotalDuration = () => {
+    return videoSegments.reduce((total, segment) => {
+      return total + (segment.segmentDuration || 0);
+    }, 0);
+  };
+  
+  const formatDuration = (seconds) => {
+    if (!seconds) return '0.0s';
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = (seconds % 60).toFixed(1);
+    
+    if (minutes > 0) {
+      return `${minutes}m ${remainingSeconds}s`;
+    }
+    
+    return `${remainingSeconds}s`;
+  };
+  
   const handleSubmit = async () => {
     if (files.length < 2) {
       setError(t('videoMerger.validation.selectFiles'));
@@ -101,7 +209,13 @@ function VideoMerger() {
       const taskConfig = {
         merge_mode: 'concat',
         audio_handling: 'keep_all',
-        quality_preset: 'medium'
+        quality_preset: 'medium',
+        segments: videoSegments.map(segment => ({
+          filename: segment.filename,
+          start_time: segment.startTime,
+          end_time: segment.endTime,
+          duration: segment.segmentDuration
+        }))
       };
       
       const response = await videoMergerService.submitTask(
@@ -218,58 +332,181 @@ function VideoMerger() {
                 </div>
               ) : (
                 <div>
-                  <h3 className="text-lg font-medium mb-4">{t('tasks.types.video_merge')} - {files.length} {t('common.files')}</h3>
-                  
-                  <div className="space-y-2 mb-6">
-                    {files.map((file, index) => (
-                      <div 
-                        key={index} 
-                        className="flex items-center justify-between bg-gray-50 p-3 rounded"
-                      >
-                        <div className="flex items-center">
-                          <span className="mr-2 text-gray-500">{index + 1}.</span>
-                          <span className="truncate max-w-xs">{file.name}</span>
+                  {!showSegmentEditor ? (
+                    <div>
+                      <h3 className="text-lg font-medium mb-4">{t('tasks.types.video_merge')} - {files.length} {t('common.files')}</h3>
+                      
+                      <div className="space-y-2 mb-6">
+                        {files.map((file, index) => (
+                          <div 
+                            key={index} 
+                            className="flex items-center justify-between bg-gray-50 p-3 rounded"
+                          >
+                            <div className="flex items-center">
+                              <span className="mr-2 text-gray-500">{index + 1}.</span>
+                              <span className="truncate max-w-xs">{file.name}</span>
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              {formatFileSize(file.size)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="flex space-x-3">
+                        <Button 
+                          variant="outline" 
+                          className="flex-1"
+                          onClick={() => {
+                            setFiles([]);
+                            setVideoSegments([]);
+                            setShowSegmentEditor(false);
+                          }}
+                          disabled={isUploading}
+                        >
+                          {t('common.reselect')}
+                        </Button>
+                        <Button 
+                          onClick={() => setShowSegmentEditor(true)}
+                          className="flex-1"
+                        >
+                          编辑时间段
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                        <div className="flex flex-wrap justify-between items-center">
+                          <div>
+                            <p className="font-medium">
+                              总视频数: {videoSegments.length}
+                            </p>
+                            <p className="font-medium">
+                              总时长: {formatDuration(calculateTotalDuration())}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              视频将按以下顺序合并
+                            </p>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              onClick={() => setShowSegmentEditor(false)}
+                              disabled={isUploading}
+                            >
+                              返回
+                            </Button>
+                            <Button
+                              onClick={handleSubmit}
+                              loading={isUploading}
+                              disabled={isUploading || videoSegments.length === 0}
+                              size="lg"
+                            >
+                              {t('videoMerger.editSegments.startMerging')}
+                            </Button>
+                          </div>
                         </div>
-                        <span className="text-xs text-gray-500">
-                          {formatFileSize(file.size)}
-                        </span>
                       </div>
-                    ))}
-                  </div>
-                  
-                  {isUploading && (
-                    <div className="mb-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">{t('common.uploading')}</span>
-                        <span className="text-sm text-gray-500">{uploadProgress}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-primary h-2 rounded-full transition-all duration-300" 
-                          style={{ width: `${uploadProgress}%` }}
-                        ></div>
+                      
+                      {isUploading && (
+                        <div className="mb-4">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-medium">{t('common.uploading')}</span>
+                            <span className="text-sm text-gray-500">{uploadProgress}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-primary h-2 rounded-full transition-all duration-300" 
+                              style={{ width: `${uploadProgress}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="space-y-4">
+                        {videoSegments.map((segment, index) => (
+                          <div key={segment.id} className="border rounded-lg p-4 bg-white">
+                            <div className="flex items-center mb-3">
+                              <span className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium mr-3">
+                                {index + 1}
+                              </span>
+                              <div className="flex-grow">
+                                <h3 className="font-medium">{segment.filename}</h3>
+                                <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                                  <div>
+                                    <p>文件大小: {formatFileSize(segment.size)}</p>
+                                    <p>原始时长: {formatDuration(segment.duration || 0)}</p>
+                                  </div>
+                                  <div>
+                                    <p>选中时长: {formatDuration(segment.segmentDuration || (segment.endTime || segment.duration || 0) - (segment.startTime || 0))}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="grid md:grid-cols-2 gap-4 items-end">
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    开始时间 (秒)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    value={(segment.startTime || 0).toFixed(1)}
+                                    min="0"
+                                    max={(segment.duration || 0) - 0.1}
+                                    step="0.1"
+                                    onChange={(e) => {
+                                      const startTime = parseFloat(e.target.value) || 0;
+                                      handleTimeUpdate(segment.id, startTime, segment.endTime || segment.duration || 0);
+                                    }}
+                                    disabled={isUploading}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    结束时间 (秒)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    value={(segment.endTime || segment.duration || 0).toFixed(1)}
+                                    min="0.1"
+                                    max={segment.duration || 0}
+                                    step="0.1"
+                                    onChange={(e) => {
+                                      const endTime = parseFloat(e.target.value) || (segment.duration || 0);
+                                      handleTimeUpdate(segment.id, segment.startTime || 0, endTime);
+                                    }}
+                                    disabled={isUploading}
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="flex space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-grow"
+                                  onClick={() => handleTimeReset(segment.id)}
+                                  disabled={isUploading}
+                                >
+                                  重置
+                                </Button>
+                              </div>
+                            </div>
+                            
+                            <div className="mt-2 text-xs text-gray-500">
+                              选中段: {(segment.startTime || 0).toFixed(1)}s - {(segment.endTime || segment.duration || 0).toFixed(1)}s
+                              ({((segment.endTime || segment.duration || 0) - (segment.startTime || 0)).toFixed(1)}s 时长)
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
-                  
-                  <div className="flex space-x-3">
-                    <Button 
-                      variant="outline" 
-                      className="flex-1"
-                      onClick={() => setFiles([])}
-                      disabled={isUploading}
-                    >
-                      {t('common.reselect')}
-                    </Button>
-                    <Button 
-                      onClick={handleSubmit}
-                      loading={isUploading}
-                      disabled={isUploading}
-                      className="flex-1"
-                    >
-                      {t('videoMerger.editSegments.startMerging')}
-                    </Button>
-                  </div>
                 </div>
               )}
             </div>
